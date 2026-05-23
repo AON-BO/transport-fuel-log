@@ -167,6 +167,32 @@
     .toast.success { background: #1b5e20; color: #fff; }
     .toast.error   { background: #b71c1c; color: #fff; }
 
+    /* ── BUDGET BAR (form) ── */
+    .budget-bar {
+      display: none; margin: 14px 0 0;
+      padding: 12px 18px; border-radius: 8px;
+      border: 1.5px solid #d0d7e8; background: #f8f9ff;
+      gap: 20px; flex-wrap: wrap; align-items: center;
+    }
+    .budget-bar.show { display: flex; }
+    .b-item { display: flex; flex-direction: column; gap: 2px; }
+    .b-lbl { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .3px; }
+    .b-val { font-size: 16px; font-weight: 800; }
+    .b-val.ok  { color: #2e7d32; }
+    .b-val.warn { color: #e65100; }
+    .b-val.over { color: #c62828; }
+    .b-prog { flex: 1; min-width: 180px; }
+    .b-prog-track { height: 10px; background: #dde3f0; border-radius: 5px; overflow: hidden; margin-top: 5px; }
+    .b-prog-fill  { height: 100%; border-radius: 5px; transition: width .4s; }
+    .b-prog-fill.ok   { background: #43a047; }
+    .b-prog-fill.warn { background: #fb8c00; }
+    .b-prog-fill.over { background: #e53935; }
+
+    /* ── BUDGET TABLE cells ── */
+    .c-ok   { color: #2e7d32 !important; font-weight: 700 !important; }
+    .c-warn { color: #e65100 !important; font-weight: 700 !important; }
+    .c-over { color: #c62828 !important; font-weight: 800 !important; }
+
     /* ── PRINT ── */
     @media print {
       .app-header, .tabs, .no-print { display: none !important; }
@@ -270,6 +296,26 @@
           <input type="text" id="f-bahtPerKm" class="calc" readonly>
         </div>
       </div>
+      <!-- แถบวงเงิน -->
+      <div class="budget-bar" id="budget-bar">
+        <div class="b-item">
+          <span class="b-lbl">วงเงิน / เดือน</span>
+          <span class="b-val" id="b-limit"></span>
+        </div>
+        <div class="b-item">
+          <span class="b-lbl">ใช้เดือนนี้</span>
+          <span class="b-val" id="b-used"></span>
+        </div>
+        <div class="b-item">
+          <span class="b-lbl">คงเหลือ</span>
+          <span class="b-val" id="b-remain"></span>
+        </div>
+        <div class="b-prog">
+          <span class="b-lbl" id="b-pct-lbl"></span>
+          <div class="b-prog-track"><div class="b-prog-fill" id="b-fill"></div></div>
+        </div>
+      </div>
+
       <div class="form-actions">
         <button class="btn btn-primary" onclick="submitForm()">💾 บันทึก</button>
         <button class="btn btn-secondary" onclick="cancelEdit()">🔄 ล้าง</button>
@@ -353,6 +399,13 @@ const VEHICLES = [
   { plate: '99-2350', name: 'สมัย สาขา',           type: '10 ล้อ'     },
   { plate: '99-3000', name: 'พิเชษฐ ชัยฤทธิ์',    type: '6 ล้อ'      },
 ];
+
+const BUDGET = {
+  '6 ล้อ':      30000,
+  '6 ล้อ HIAB': 30000,
+  '10 ล้อ':     40000,
+  '12 ล้อ':     40000,
+};
 
 const FUEL_TYPES = [
   'HI DIESEL S (B7)', 'DIESEL B7', 'DIESEL B20',
@@ -448,6 +501,34 @@ function $(id) { return document.getElementById(id); }
 function val(id) { return $(id).value; }
 function set(id, v) { $(id).value = v; }
 
+function monthUsed(plate, mk) {
+  return records.filter(r => r.plate === plate && r.date.slice(0,7) === mk)
+                .reduce((s,r) => s + r.totalPrice, 0);
+}
+
+function showBudgetBar(plate) {
+  const v = VEHICLES.find(v => v.plate === plate);
+  const limit = v ? (BUDGET[v.type] || 0) : 0;
+  if (!limit) { $('budget-bar').classList.remove('show'); return; }
+
+  const mk    = today().slice(0,7);
+  const used  = monthUsed(plate, mk);
+  const remain = limit - used;
+  const pct   = Math.min(100, (used / limit) * 100);
+  const cls   = pct >= 100 ? 'over' : pct >= 80 ? 'warn' : 'ok';
+
+  $('b-limit').textContent  = ni(limit) + ' บาท';
+  $('b-limit').className    = 'b-val';
+  $('b-used').textContent   = ni(used)  + ' บาท';
+  $('b-used').className     = 'b-val ' + cls;
+  $('b-remain').textContent = (remain >= 0 ? ni(remain) : '(เกิน ' + ni(-remain) + ')') + ' บาท';
+  $('b-remain').className   = 'b-val ' + cls;
+  $('b-pct-lbl').textContent = `ใช้ไปแล้ว ${pct.toFixed(1)}% ของวงเงิน`;
+  $('b-fill').style.width   = pct + '%';
+  $('b-fill').className     = 'b-prog-fill ' + cls;
+  $('budget-bar').classList.add('show');
+}
+
 // ─── FORM ───
 function onPlateChange() {
   const plate = val('f-plate');
@@ -460,6 +541,7 @@ function onPlateChange() {
   } else {
     set('f-name', ''); set('f-type', ''); set('f-odomBefore', '');
   }
+  showBudgetBar(plate);
   calcAll();
 }
 
@@ -580,6 +662,7 @@ function cancelEdit() {
   set('f-date', today());
   $('form-title').textContent = '📝 บันทึกข้อมูลน้ำมัน';
   $('edit-badge').style.display = 'none';
+  $('budget-bar').classList.remove('show');
 }
 
 function editRecord(id) {
@@ -722,12 +805,22 @@ function renderReport() {
             <th>ทะเบียน</th><th>ชื่อ-นามสกุล</th><th>ประเภท</th>
             <th>จำนวนครั้ง</th><th>รวมลิตร</th><th>รวมค่าน้ำมัน (บาท)</th>
             <th>รวมระยะทาง (กม.)</th><th>เฉลี่ย กม./ลิตร</th><th>เฉลี่ย บาท/กม.</th>
+            <th>วงเงิน/เดือน</th><th>คงเหลือ</th><th>% ใช้</th>
           </tr>
         </thead>
         <tbody>
           ${vRows.map(v => {
-            const vKmL = v.liters ? v.dist/v.liters : 0;
-            const vBpK = v.dist   ? v.cost/v.dist   : 0;
+            const vKmL   = v.liters ? v.dist/v.liters : 0;
+            const vBpK   = v.dist   ? v.cost/v.dist   : 0;
+            const limit  = BUDGET[v.type] || 0;
+            const remain = limit - v.cost;
+            const pct    = limit ? Math.min(100, (v.cost/limit)*100) : 0;
+            const cls    = pct >= 100 ? 'c-over' : pct >= 80 ? 'c-warn' : 'c-ok';
+            const budgetCols = limit ? `
+              <td class="td-r">${ni(limit)}</td>
+              <td class="td-r ${cls}">${remain >= 0 ? ni(remain) : '<strong>เกิน '+ni(-remain)+'</strong>'}</td>
+              <td class="td-r ${cls}">${pct.toFixed(1)}%</td>` :
+              `<td colspan="3" style="color:#bbb">-</td>`;
             return `<tr>
               <td><strong>${v.plate}</strong></td>
               <td class="td-l">${v.name}</td>
@@ -738,6 +831,7 @@ function renderReport() {
               <td class="td-r">${ni(v.dist)}</td>
               <td class="td-r">${n(vKmL,3)}</td>
               <td class="td-r">${n(vBpK,3)}</td>
+              ${budgetCols}
             </tr>`;
           }).join('')}
         </tbody>
@@ -750,6 +844,7 @@ function renderReport() {
             <td class="td-r">${ni(tDist)}</td>
             <td class="td-r">${n(avgKmL,3)}</td>
             <td class="td-r">${n(avgBpK,3)}</td>
+            <td colspan="3"></td>
           </tr>
         </tfoot>
       </table>
