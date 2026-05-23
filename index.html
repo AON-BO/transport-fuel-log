@@ -400,6 +400,10 @@
         <select id="rpt-month" onchange="renderReport()">
           <option value="">ทั้งหมด</option>
         </select>
+        <label>ทะเบียน:</label>
+        <select id="rpt-plate" onchange="renderReport()">
+          <option value="">ทั้งหมด</option>
+        </select>
         <button class="btn btn-print" onclick="window.print()">🖨️ พิมพ์รายงาน</button>
       </div>
     </div>
@@ -733,10 +737,12 @@ function populateFilters() {
     if (months.includes(cur)) sel.value = cur;
   });
 
-  const fp = $('fl-plate'), curP = fp.value;
-  fp.innerHTML = '<option value="">ทั้งหมด</option>';
-  VEHICLES.forEach(v => fp.add(new Option(v.plate, v.plate)));
-  if (curP) fp.value = curP;
+  ['fl-plate', 'rpt-plate'].forEach(id => {
+    const fp = $(id), curP = fp.value;
+    fp.innerHTML = '<option value="">ทั้งหมด</option>';
+    VEHICLES.forEach(v => fp.add(new Option(`${v.plate} — ${v.name}`, v.plate)));
+    if (curP) fp.value = curP;
+  });
 }
 
 // ─── RENDER LIST ───
@@ -781,11 +787,12 @@ function renderList() {
 // ─── RENDER REPORT ───
 function renderReport() {
   const month = val('rpt-month');
+  const plate = val('rpt-plate');
   const rows  = records
-    .filter(r => !month || monthKey(r.date) === month)
+    .filter(r => (!month || monthKey(r.date) === month) && (!plate || r.plate === plate))
     .sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
 
-  const period = month ? monthLabel(month) : 'ทั้งหมด';
+  const period = [month ? monthLabel(month) : 'ทั้งหมด', plate ? plate : ''].filter(Boolean).join(' · ');
   const printDate = new Date().toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' });
 
   const tCost  = rows.reduce((s,r) => s + r.totalPrice, 0);
@@ -824,7 +831,7 @@ function renderReport() {
   <div class="card">
     <div class="card-title">💳 สถานะวงเงิน — ${period}</div>
     <div class="bov-grid">
-      ${VEHICLES.map(v => {
+      ${VEHICLES.filter(v => !plate || v.plate === plate).map(v => {
         const limit = BUDGET[v.type] || 0;
         if (!limit) return `<div class="bov-item"><div class="bov-top"><span class="bov-plate">${v.plate}</span><span class="bov-type">${v.type}</span></div><div class="bov-name">${v.name}</div><div class="bov-no-budget">ไม่มีวงเงิน</div></div>`;
         const used   = vMap[v.plate] ? vMap[v.plate].cost : 0;
