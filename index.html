@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ระบบบันทึกค่าน้ำมัน - รถขนส่ง</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Sarabun', 'Segoe UI', Tahoma, sans-serif; background: #eef0f5; color: #333; font-size: 14px; line-height: 1.5; }
+
+    /* ── HEADER ── */
+    .app-header {
+      background: linear-gradient(135deg, #0d47a1 0%, #1976d2 100%);
+      color: #fff;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .hdr-icon { font-size: 30px; }
+    .hdr-text h1 { font-size: 18px; font-weight: 800; letter-spacing: 0.2px; }
+    .hdr-text p  { font-size: 12px; opacity: .75; margin-top: 1px; }
+
+    /* ── TABS ── */
+    .tabs {
+      background: #fff;
+      border-bottom: 2px solid #e0e6f0;
+      padding: 0 20px;
+      display: flex;
+      position: sticky; top: 57px; z-index: 99;
+    }
+    .tab-btn {
+      padding: 12px 22px;
+      border: none; background: none;
+      font-family: inherit; font-size: 14px; font-weight: 700; color: #999;
+      cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px;
+      transition: all .2s;
+    }
+    .tab-btn:hover  { color: #0d47a1; }
+    .tab-btn.active { color: #0d47a1; border-bottom-color: #0d47a1; }
+
+    /* ── CONTENT ── */
+    .content { padding: 20px; max-width: 1500px; margin: 0 auto; }
+    .pane { display: none; }
+    .pane.active { display: block; }
+
+    /* ── CARD ── */
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 1px 6px rgba(0,0,0,.09);
+      padding: 20px 24px;
+      margin-bottom: 18px;
+    }
+    .card-title {
+      font-size: 15px; font-weight: 800; color: #0d47a1;
+      margin-bottom: 18px; padding-bottom: 10px;
+      border-bottom: 2px solid #e3f2fd;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    /* ── FORM ── */
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(185px,1fr)); gap: 14px; }
+    .fg { display: flex; flex-direction: column; gap: 5px; }
+    .fg label { font-size: 11px; font-weight: 700; color: #666; text-transform: uppercase; letter-spacing: .4px; }
+    .fg input, .fg select {
+      padding: 9px 11px;
+      border: 1.5px solid #ced6e8; border-radius: 7px;
+      font-family: inherit; font-size: 14px; color: #333;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .fg input:focus, .fg select:focus {
+      outline: none; border-color: #1565c0;
+      box-shadow: 0 0 0 3px rgba(21,101,192,.12);
+    }
+    .fg input[readonly] { background: #f5f7fc; color: #777; cursor: default; }
+    .fg input.calc { background: #e8f5e9; color: #1b5e20; font-weight: 700; }
+
+    .form-actions { margin-top: 18px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .edit-badge { display: none; background: #fff3e0; color: #e65100; border: 1.5px solid #ffb74d; border-radius: 6px; padding: 5px 12px; font-size: 13px; font-weight: 700; }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 9px 20px; border: none; border-radius: 7px;
+      cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 700;
+      transition: all .2s;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+    .btn:active { transform: translateY(0); }
+    .btn-primary  { background: #1565c0; color: #fff; }
+    .btn-primary:hover  { background: #0d47a1; }
+    .btn-secondary { background: #f0f2f8; color: #555; border: 1.5px solid #d0d7e8; }
+    .btn-secondary:hover { background: #e0e6f4; }
+    .btn-danger  { background: #c62828; color: #fff; }
+    .btn-danger:hover  { background: #b71c1c; }
+    .btn-print   { background: #37474f; color: #fff; }
+    .btn-print:hover   { background: #263238; }
+    .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 6px; }
+    .btn-sm:hover { transform: none; box-shadow: none; }
+
+    /* ── FILTER BAR ── */
+    .filter-bar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+    .filter-bar label { font-size: 13px; font-weight: 700; color: #555; }
+    .filter-bar select, .filter-bar input[type=text] {
+      padding: 7px 11px; border: 1.5px solid #ced6e8; border-radius: 7px;
+      font-family: inherit; font-size: 13px;
+    }
+    .filter-bar select:focus { outline: none; border-color: #1565c0; }
+    .rec-count { margin-left: auto; font-size: 13px; color: #999; font-weight: 600; }
+
+    /* ── TABLE ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    thead th {
+      background: #0d47a1; color: #fff;
+      padding: 9px 10px; text-align: center;
+      font-weight: 700; white-space: nowrap;
+      border: 1px solid #1565c0;
+    }
+    tbody td {
+      padding: 7px 10px; border: 1px solid #e5eaf5;
+      text-align: center; white-space: nowrap;
+    }
+    tbody tr:nth-child(odd) td { background: #fafbff; }
+    tbody tr:hover td { background: #dceeff !important; }
+    .td-l { text-align: left !important; }
+    .td-r { text-align: right !important; }
+    tfoot td {
+      padding: 9px 10px; font-weight: 800;
+      background: #1a237e !important; color: #fff !important;
+      border: 1px solid #283593;
+    }
+    .empty-row td { text-align: center !important; padding: 50px; color: #bbb; font-size: 15px; }
+
+    /* ── KPI CARDS ── */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(160px,1fr)); gap: 14px; margin-bottom: 18px; }
+    .kpi { background: #fff; border-radius: 10px; padding: 14px 16px; border-left: 4px solid; box-shadow: 0 1px 5px rgba(0,0,0,.08); }
+    .kpi.k1 { border-color: #1565c0; }
+    .kpi.k2 { border-color: #2e7d32; }
+    .kpi.k3 { border-color: #e65100; }
+    .kpi.k4 { border-color: #6a1b9a; }
+    .kpi.k5 { border-color: #00838f; }
+    .kpi-val { font-size: 20px; font-weight: 800; color: #1a1a2e; }
+    .kpi-lbl { font-size: 11px; color: #999; margin-top: 3px; }
+
+    /* ── REPORT TITLE ── */
+    .rpt-title { text-align: center; margin-bottom: 20px; }
+    .rpt-title h2 { font-size: 20px; font-weight: 800; color: #0d47a1; }
+    .rpt-title p  { font-size: 13px; color: #777; margin-top: 4px; }
+    .rpt-divider { border: none; border-top: 2px dashed #dde3f0; margin: 0 0 18px 0; }
+
+    /* ── TOAST ── */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      padding: 11px 20px; border-radius: 8px;
+      font-weight: 700; font-size: 14px;
+      box-shadow: 0 4px 18px rgba(0,0,0,.18);
+      z-index: 999; opacity: 0; transform: translateY(8px);
+      transition: all .3s; pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.success { background: #1b5e20; color: #fff; }
+    .toast.error   { background: #b71c1c; color: #fff; }
+
+    /* ── PRINT ── */
+    @media print {
+      .app-header, .tabs, .no-print { display: none !important; }
+      #pane-entry, #pane-list { display: none !important; }
+      #pane-report { display: block !important; }
+      .card { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
+      body { background: #fff; font-size: 11px; }
+      .kpi-grid { grid-template-columns: repeat(5,1fr); }
+      .kpi { box-shadow: none; border: 1px solid #ccc; }
+      .content { padding: 0; }
+      table { font-size: 10px; }
+      thead th { font-size: 10px; padding: 6px 6px; }
+      tbody td, tfoot td { padding: 5px 6px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════ HEADER ═══════════════════ -->
+<header class="app-header">
+  <span class="hdr-icon">⛽</span>
+  <div class="hdr-text">
+    <h1>ระบบบันทึกค่าน้ำมัน</h1>
+    <p>รถขนส่งสินค้า</p>
+  </div>
+</header>
+
+<!-- ═══════════════════ TABS ═══════════════════ -->
+<div class="tabs">
+  <button class="tab-btn active" onclick="showPane('entry')">📝 บันทึกข้อมูล</button>
+  <button class="tab-btn" onclick="showPane('list')">📋 รายการทั้งหมด</button>
+  <button class="tab-btn" onclick="showPane('report')">📊 รายงานสรุป</button>
+</div>
+
+<!-- ═══════════════════ CONTENT ═══════════════════ -->
+<div class="content">
+
+  <!-- ─── PANE: ENTRY ─── -->
+  <div id="pane-entry" class="pane active">
+    <div class="card">
+      <div class="card-title" id="form-title">📝 บันทึกข้อมูลน้ำมัน</div>
+      <div class="form-grid">
+        <div class="fg">
+          <label>เลขที่บิล</label>
+          <input type="text" id="f-billNo" placeholder="เช่น INV-001">
+        </div>
+        <div class="fg">
+          <label>วันที่</label>
+          <input type="date" id="f-date">
+        </div>
+        <div class="fg">
+          <label>ทะเบียนรถ</label>
+          <select id="f-plate" onchange="onPlateChange()">
+            <option value="">-- เลือกทะเบียน --</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>ชื่อ-นามสกุล</label>
+          <input type="text" id="f-name" readonly>
+        </div>
+        <div class="fg">
+          <label>ประเภทรถ</label>
+          <input type="text" id="f-type" readonly>
+        </div>
+        <div class="fg">
+          <label>ชนิดน้ำมัน</label>
+          <select id="f-fuelType">
+            <option value="">-- เลือกชนิด --</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>ไมล์รอบก่อน (กม.)</label>
+          <input type="number" id="f-odomBefore" placeholder="0" oninput="calcOdom()">
+        </div>
+        <div class="fg">
+          <label>ไมล์รอบที่เติม (กม.)</label>
+          <input type="number" id="f-odomAfter" placeholder="0" oninput="calcOdom()">
+        </div>
+        <div class="fg">
+          <label>ราคา / ลิตร (บาท)</label>
+          <input type="number" id="f-pricePerL" placeholder="0.000" step="0.001" oninput="calcFromPricePerL()">
+        </div>
+        <div class="fg">
+          <label>ราคารวม (บาท)</label>
+          <input type="number" id="f-totalPrice" placeholder="0.00" step="0.01" oninput="calcFromTotal()">
+        </div>
+        <div class="fg">
+          <label>จำนวนลิตร ⚡</label>
+          <input type="number" id="f-liters" placeholder="0.000" step="0.001" class="calc" oninput="calcFromLiters()">
+        </div>
+        <div class="fg">
+          <label>ระยะทาง (กม.) ⚡</label>
+          <input type="text" id="f-distance" class="calc" readonly>
+        </div>
+        <div class="fg">
+          <label>กม. / ลิตร ⚡</label>
+          <input type="text" id="f-kmPerL" class="calc" readonly>
+        </div>
+        <div class="fg">
+          <label>บาท / กม. ⚡</label>
+          <input type="text" id="f-bahtPerKm" class="calc" readonly>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="submitForm()">💾 บันทึก</button>
+        <button class="btn btn-secondary" onclick="cancelEdit()">🔄 ล้าง</button>
+        <span class="edit-badge" id="edit-badge">✏️ กำลังแก้ไขรายการ</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── PANE: LIST ─── -->
+  <div id="pane-list" class="pane">
+    <div class="card">
+      <div class="card-title">📋 รายการทั้งหมด</div>
+      <div class="filter-bar no-print">
+        <label>เดือน:</label>
+        <select id="fl-month" onchange="renderList()">
+          <option value="">ทั้งหมด</option>
+        </select>
+        <label>ทะเบียน:</label>
+        <select id="fl-plate" onchange="renderList()">
+          <option value="">ทั้งหมด</option>
+        </select>
+        <span class="rec-count" id="list-count"></span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>No.</th>
+              <th>วันที่</th>
+              <th>เลขที่บิล</th>
+              <th>ทะเบียน</th>
+              <th>ชื่อ-นามสกุล</th>
+              <th>ประเภท</th>
+              <th>ไมล์ก่อน</th>
+              <th>ไมล์ที่เติม</th>
+              <th>ชนิดน้ำมัน</th>
+              <th>ราคา/ลิตร</th>
+              <th>ลิตร</th>
+              <th>ราคา (บาท)</th>
+              <th>ระยะทาง</th>
+              <th>กม./ลิตร</th>
+              <th>บาท/กม.</th>
+              <th class="no-print">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="list-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── PANE: REPORT ─── -->
+  <div id="pane-report" class="pane">
+    <div class="card no-print">
+      <div class="filter-bar" style="margin-bottom:0">
+        <label>ช่วงเวลา:</label>
+        <select id="rpt-month" onchange="renderReport()">
+          <option value="">ทั้งหมด</option>
+        </select>
+        <button class="btn btn-print" onclick="window.print()">🖨️ พิมพ์รายงาน</button>
+      </div>
+    </div>
+    <div id="report-content"></div>
+  </div>
+
+</div><!-- /content -->
+
+<div id="toast" class="toast"></div>
+
+<!-- ═══════════════════ SCRIPT ═══════════════════ -->
+<script>
+// ─── MASTER DATA ───
+const VEHICLES = [
+  { plate: '50-3113', name: 'ประยูร กลางพิลา',    type: '6 ล้อ'      },
+  { plate: '50-3223', name: 'สมชาย เพลิดภูเขียว', type: '10 ล้อ'     },
+  { plate: '51-9923', name: 'สมเจต ยุทธทองหลาง',  type: '10 ล้อ'     },
+  { plate: '52-0001', name: 'ณัฐนนท์ โสภาพ',      type: '10 ล้อ'     },
+  { plate: '54-2288', name: 'ซ้อน เฉลิมกลาง',     type: '12 ล้อ'     },
+  { plate: '95-6474', name: 'พิเชษฐ ชัยฤทธิ์',    type: '6 ล้อ'      },
+  { plate: '98-2600', name: 'ณัฐนนท์ โสภาพ',      type: '6 ล้อ HIAB' },
+  { plate: '99-2350', name: 'สมัย สาขา',           type: '10 ล้อ'     },
+  { plate: '99-3000', name: 'พิเชษฐ ชัยฤทธิ์',    type: '6 ล้อ'      },
+];
+
+const FUEL_TYPES = [
+  'HI DIESEL S (B7)', 'DIESEL B7', 'DIESEL B20',
+  'GASOHOL 95', 'GASOHOL E20', 'NGV',
+];
+
+// ─── SAMPLE DATA (ตัวอย่างจากตาราง Excel) ───
+const SAMPLE = [
+  { id:1,  no:1,  date:'2026-04-02', billNo:'B001', plate:'95-6474', name:'พิเชษฐ ชัยฤทธิ์',    type:'6 ล้อ',      odomBefore:697469, odomAfter:698157, fuelType:'HI DIESEL S (B7)', pricePerL:44.290, liters:90.310,  totalPrice:4000, distance:688, kmPerL:7.618, bahtPerKm:5.814 },
+  { id:2,  no:2,  date:'2026-04-09', billNo:'B002', plate:'98-2600', name:'ณัฐนนท์ โสภาพ',      type:'6 ล้อ HIAB', odomBefore:335536, odomAfter:336140, fuelType:'HI DIESEL S (B7)', pricePerL:48.450, liters:82.560,  totalPrice:4000, distance:604, kmPerL:7.316, bahtPerKm:6.623 },
+  { id:3,  no:3,  date:'2026-05-02', billNo:'B003', plate:'51-9923', name:'สมเจต ยุทธทองหลาง',  type:'10 ล้อ',     odomBefore:432160, odomAfter:432551, fuelType:'HI DIESEL S (B7)', pricePerL:40.850, liters:122.400, totalPrice:5000, distance:391, kmPerL:3.190, bahtPerKm:12.788 },
+  { id:4,  no:4,  date:'2026-05-05', billNo:'B004', plate:'54-2288', name:'ซ้อน เฉลิมกลาง',     type:'12 ล้อ',     odomBefore:142357, odomAfter:143033, fuelType:'HI DIESEL S (B7)', pricePerL:40.870, liters:195.740, totalPrice:8000, distance:676, kmPerL:3.453, bahtPerKm:11.834 },
+  { id:5,  no:5,  date:'2026-05-05', billNo:'B005', plate:'99-2350', name:'สมัย สาขา',           type:'10 ล้อ',     odomBefore:746497, odomAfter:747054, fuelType:'HI DIESEL S (B7)', pricePerL:40.850, liters:122.400, totalPrice:5000, distance:557, kmPerL:4.550, bahtPerKm:8.978 },
+  { id:6,  no:6,  date:'2026-05-06', billNo:'B006', plate:'50-3113', name:'ประยูร กลางพิลา',    type:'6 ล้อ',      odomBefore:485163, odomAfter:485588, fuelType:'HI DIESEL S (B7)', pricePerL:40.850, liters:97.910,  totalPrice:4000, distance:425, kmPerL:4.340, bahtPerKm:9.412 },
+  { id:7,  no:7,  date:'2026-05-07', billNo:'B007', plate:'52-0001', name:'ณัฐนนท์ โสภาพ',      type:'10 ล้อ',     odomBefore:350894, odomAfter:351465, fuelType:'HI DIESEL S (B7)', pricePerL:40.850, liters:122.390, totalPrice:5000, distance:571, kmPerL:4.667, bahtPerKm:8.757 },
+  { id:8,  no:8,  date:'2026-05-08', billNo:'B008', plate:'54-2288', name:'ซ้อน เฉลิมกลาง',     type:'12 ล้อ',     odomBefore:143033, odomAfter:143557, fuelType:'HI DIESEL S (B7)', pricePerL:40.000, liters:200.000, totalPrice:8000, distance:524, kmPerL:2.620, bahtPerKm:15.267 },
+  { id:9,  no:9,  date:'2026-05-08', billNo:'B009', plate:'50-3223', name:'สมชาย เพลิดภูเขียว', type:'10 ล้อ',     odomBefore:606668, odomAfter:607403, fuelType:'HI DIESEL S (B7)', pricePerL:40.000, liters:150.000, totalPrice:6000, distance:735, kmPerL:4.900, bahtPerKm:8.163 },
+  { id:10, no:10, date:'2026-05-09', billNo:'B010', plate:'99-2350', name:'สมัย สาขา',           type:'10 ล้อ',     odomBefore:747054, odomAfter:747500, fuelType:'HI DIESEL S (B7)', pricePerL:40.000, liters:125.000, totalPrice:5000, distance:446, kmPerL:3.568, bahtPerKm:11.211 },
+  { id:11, no:11, date:'2026-05-11', billNo:'B011', plate:'50-3113', name:'ประยูร กลางพิลา',    type:'6 ล้อ',      odomBefore:485588, odomAfter:486139, fuelType:'HI DIESEL S (B7)', pricePerL:40.000, liters:100.000, totalPrice:4000, distance:551, kmPerL:5.510, bahtPerKm:7.260 },
+  { id:12, no:12, date:'2026-05-11', billNo:'B012', plate:'99-3000', name:'พิเชษฐ ชัยฤทธิ์',    type:'6 ล้อ',      odomBefore:636975, odomAfter:637566, fuelType:'HI DIESEL S (B7)', pricePerL:39.970, liters:125.100, totalPrice:5000, distance:591, kmPerL:4.724, bahtPerKm:8.461 },
+  { id:13, no:13, date:'2026-05-12', billNo:'B013', plate:'51-9923', name:'สมเจต ยุทธทองหลาง',  type:'10 ล้อ',     odomBefore:432551, odomAfter:433040, fuelType:'HI DIESEL S (B7)', pricePerL:40.000, liters:125.000, totalPrice:5000, distance:489, kmPerL:3.912, bahtPerKm:10.225 },
+  { id:14, no:14, date:'2026-05-14', billNo:'B014', plate:'54-2288', name:'ซ้อน เฉลิมกลาง',     type:'12 ล้อ',     odomBefore:143557, odomAfter:144338, fuelType:'HI DIESEL S (B7)', pricePerL:41.540, liters:192.590, totalPrice:8000, distance:781, kmPerL:4.056, bahtPerKm:10.243 },
+  { id:15, no:15, date:'2026-05-15', billNo:'B015', plate:'95-6474', name:'พิเชษฐ ชัยฤทธิ์',    type:'6 ล้อ',      odomBefore:698157, odomAfter:698679, fuelType:'HI DIESEL S (B7)', pricePerL:41.500, liters:120.480, totalPrice:5000, distance:522, kmPerL:4.333, bahtPerKm:9.579 },
+  { id:16, no:16, date:'2026-05-15', billNo:'B016', plate:'52-0001', name:'ณัฐนนท์ โสภาพ',      type:'10 ล้อ',     odomBefore:351465, odomAfter:351983, fuelType:'HI DIESEL S (B7)', pricePerL:41.470, liters:120.570, totalPrice:5000, distance:518, kmPerL:4.297, bahtPerKm:9.653 },
+  { id:17, no:17, date:'2026-05-15', billNo:'B017', plate:'99-2350', name:'สมัย สาขา',           type:'10 ล้อ',     odomBefore:747500, odomAfter:748189, fuelType:'HI DIESEL S (B7)', pricePerL:41.500, liters:120.480, totalPrice:5000, distance:689, kmPerL:5.720, bahtPerKm:7.257 },
+  { id:18, no:18, date:'2026-05-18', billNo:'B018', plate:'51-9923', name:'สมเจต ยุทธทองหลาง',  type:'10 ล้อ',     odomBefore:433040, odomAfter:433712, fuelType:'HI DIESEL S (B7)', pricePerL:41.500, liters:120.480, totalPrice:5000, distance:672, kmPerL:5.578, bahtPerKm:7.440 },
+  { id:19, no:19, date:'2026-05-18', billNo:'B019', plate:'50-3223', name:'สมชาย เพลิดภูเขียว', type:'10 ล้อ',     odomBefore:607403, odomAfter:608133, fuelType:'HI DIESEL S (B7)', pricePerL:41.500, liters:151.807, totalPrice:6300, distance:730, kmPerL:4.809, bahtPerKm:8.630 },
+  { id:20, no:20, date:'2026-05-18', billNo:'B020', plate:'50-3113', name:'ประยูร กลางพิลา',    type:'6 ล้อ',      odomBefore:486139, odomAfter:486705, fuelType:'HI DIESEL S (B7)', pricePerL:41.500, liters:96.386,  totalPrice:4000, distance:566, kmPerL:5.872, bahtPerKm:7.067 },
+];
+
+// ─── STATE ───
+let records = [];
+let editingId = null;
+
+// ─── INIT ───
+function init() {
+  const saved = localStorage.getItem('fuelRecords_v1');
+  records = saved ? JSON.parse(saved) : SAMPLE.map(r => ({ ...r }));
+  if (!saved) save();
+
+  // Vehicle dropdown
+  const ps = document.getElementById('f-plate');
+  VEHICLES.forEach(v => {
+    const o = new Option(`${v.plate}  —  ${v.name}`, v.plate);
+    ps.add(o);
+  });
+
+  // Fuel type dropdown
+  const fs = document.getElementById('f-fuelType');
+  FUEL_TYPES.forEach(f => fs.add(new Option(f, f)));
+  fs.value = 'HI DIESEL S (B7)';
+
+  document.getElementById('f-date').value = today();
+  populateFilters();
+  renderList();
+  renderReport();
+}
+
+// ─── HELPERS ───
+function save() { localStorage.setItem('fuelRecords_v1', JSON.stringify(records)); }
+
+function today() { return new Date().toISOString().slice(0, 10); }
+
+function fmtDate(d) {
+  if (!d) return '';
+  const [y, m, day] = d.split('-');
+  return `${+day}/${+m}/${y}`;
+}
+
+function n(v, d = 3) {
+  if (v === null || v === undefined || v === '' || isNaN(v)) return '';
+  return (+v).toLocaleString('th-TH', { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+function ni(v) { return n(v, 0); }
+
+function monthKey(date) { return date ? date.slice(0, 7) : ''; }
+function monthLabel(k) {
+  const [y, m] = k.split('-');
+  const M = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  return `${M[+m]} ${+y + 543}`;
+}
+
+function lastOdom(plate, skipId = null) {
+  const rs = records.filter(r => r.plate === plate && r.id !== skipId)
+                    .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+  return rs.length ? rs[0].odomAfter : null;
+}
+
+function nextId() { return records.length ? Math.max(...records.map(r => r.id)) + 1 : 1; }
+function nextNo() { return records.length ? Math.max(...records.map(r => r.no)) + 1 : 1; }
+
+function $(id) { return document.getElementById(id); }
+function val(id) { return $(id).value; }
+function set(id, v) { $(id).value = v; }
+
+// ─── FORM ───
+function onPlateChange() {
+  const plate = val('f-plate');
+  const v = VEHICLES.find(v => v.plate === plate);
+  if (v) {
+    set('f-name', v.name);
+    set('f-type', v.type);
+    const lo = lastOdom(plate, editingId);
+    set('f-odomBefore', lo !== null ? lo : '');
+  } else {
+    set('f-name', ''); set('f-type', ''); set('f-odomBefore', '');
+  }
+  calcAll();
+}
+
+// ราคารวม + ราคา/ลิตร → คำนวณลิตร (primary mode)
+function calcFromTotal() {
+  const ppl   = +val('f-pricePerL')  || 0;
+  const price = +val('f-totalPrice') || 0;
+  const lit   = ppl && price ? price / ppl : 0;
+  if (lit) set('f-liters', lit.toFixed(3));
+  else     set('f-liters', '');
+  _calcDistEff(price, lit);
+}
+
+// ลิตร ถูกแก้เอง → recalculate ราคารวม
+function calcFromLiters() {
+  const ppl = +val('f-pricePerL') || 0;
+  const lit = +val('f-liters')    || 0;
+  const price = ppl && lit ? ppl * lit : 0;
+  if (price) set('f-totalPrice', price.toFixed(2));
+  else       set('f-totalPrice', '');
+  _calcDistEff(price, lit);
+}
+
+// ราคา/ลิตร เปลี่ยน → recalc ลิตรจาก ราคารวม (ถ้ามี) หรือ recalc ราคาจาก ลิตร
+function calcFromPricePerL() {
+  const ppl   = +val('f-pricePerL')  || 0;
+  const price = +val('f-totalPrice') || 0;
+  const litRaw= +val('f-liters')     || 0;
+  if (price && ppl) {
+    const lit = price / ppl;
+    set('f-liters', lit.toFixed(3));
+    _calcDistEff(price, lit);
+  } else if (litRaw && ppl) {
+    const newPrice = ppl * litRaw;
+    set('f-totalPrice', newPrice.toFixed(2));
+    _calcDistEff(newPrice, litRaw);
+  } else {
+    _calcDistEff(0, 0);
+  }
+}
+
+function _calcDistEff(price, lit) {
+  const ob  = +val('f-odomBefore') || 0;
+  const oa  = +val('f-odomAfter')  || 0;
+  const dist = oa > ob ? oa - ob : 0;
+  const kml  = dist && lit   ? dist / lit   : 0;
+  const bpk  = dist && price ? price / dist : 0;
+  set('f-distance',  dist  ? dist            : '');
+  set('f-kmPerL',    kml   ? kml.toFixed(3)  : '');
+  set('f-bahtPerKm', bpk   ? bpk.toFixed(3)  : '');
+}
+
+// ไมล์เปลี่ยน → คำนวณแค่ระยะทาง/ประสิทธิภาพ (ไม่แตะ ลิตร/ราคา)
+function calcOdom() {
+  const price = +val('f-totalPrice') || 0;
+  const lit   = +val('f-liters')     || 0;
+  _calcDistEff(price, lit);
+}
+
+// ใช้สำหรับ editRecord (โหลดข้อมูลเดิม)
+function calcAll() { calcFromTotal(); }
+
+function submitForm() {
+  const billNo  = val('f-billNo').trim();
+  const date    = val('f-date');
+  const plate   = val('f-plate');
+  const fuelType= val('f-fuelType');
+  const ob      = parseFloat(val('f-odomBefore'));
+  const oa      = parseFloat(val('f-odomAfter'));
+  const ppl     = parseFloat(val('f-pricePerL'));
+  const lit     = parseFloat(val('f-liters'));
+
+  if (!date || !plate || !fuelType || isNaN(oa) || isNaN(ppl) || isNaN(lit)) {
+    toast('กรุณากรอกข้อมูลให้ครบถ้วน', 'error'); return;
+  }
+  if (!isNaN(ob) && oa <= ob) {
+    toast('ไมล์ที่เติมต้องมากกว่าไมล์รอบก่อน', 'error'); return;
+  }
+
+  const v = VEHICLES.find(v => v.plate === plate);
+  const price = ppl * lit;
+  const dist  = isNaN(ob) ? 0 : oa - ob;
+  const kml   = dist && lit   ? dist / lit   : 0;
+  const bpk   = dist && price ? price / dist : 0;
+
+  const rec = {
+    id: editingId ?? nextId(),
+    no: editingId ? records.find(r => r.id === editingId).no : nextNo(),
+    billNo, date, plate,
+    name: v?.name || '', type: v?.type || '',
+    fuelType, odomBefore: isNaN(ob) ? 0 : ob, odomAfter: oa,
+    pricePerL: ppl, liters: lit, totalPrice: price,
+    distance: dist, kmPerL: kml, bahtPerKm: bpk,
+  };
+
+  if (editingId !== null) {
+    const idx = records.findIndex(r => r.id === editingId);
+    records[idx] = rec;
+    toast('แก้ไขข้อมูลสำเร็จ ✓', 'success');
+  } else {
+    records.push(rec);
+    toast('บันทึกข้อมูลสำเร็จ ✓', 'success');
+  }
+
+  save();
+  cancelEdit();
+  populateFilters();
+  renderList();
+  renderReport();
+}
+
+function cancelEdit() {
+  editingId = null;
+  ['f-billNo','f-name','f-type','f-odomBefore','f-odomAfter',
+   'f-pricePerL','f-liters','f-totalPrice','f-distance','f-kmPerL','f-bahtPerKm'].forEach(id => set(id,''));
+  set('f-plate', '');
+  set('f-fuelType', 'HI DIESEL S (B7)');
+  set('f-date', today());
+  $('form-title').textContent = '📝 บันทึกข้อมูลน้ำมัน';
+  $('edit-badge').style.display = 'none';
+}
+
+function editRecord(id) {
+  const r = records.find(r => r.id === id);
+  if (!r) return;
+  editingId = id;
+  set('f-billNo',     r.billNo);
+  set('f-date',       r.date);
+  set('f-plate',      r.plate);
+  set('f-name',       r.name);
+  set('f-type',       r.type);
+  set('f-fuelType',   r.fuelType);
+  set('f-odomBefore', r.odomBefore);
+  set('f-odomAfter',  r.odomAfter);
+  set('f-pricePerL',  r.pricePerL);
+  set('f-liters',     r.liters);
+  calcAll();
+  $('form-title').textContent = `✏️ แก้ไขรายการ No.${r.no}`;
+  $('edit-badge').style.display = 'inline-flex';
+  showPane('entry');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function deleteRecord(id) {
+  const r = records.find(r => r.id === id);
+  if (!r || !confirm(`ลบรายการ No.${r.no} (${r.plate} — ${fmtDate(r.date)}) ?`)) return;
+  records = records.filter(r => r.id !== id);
+  save();
+  populateFilters();
+  renderList();
+  renderReport();
+  toast('ลบรายการแล้ว', 'success');
+}
+
+// ─── FILTERS ───
+function populateFilters() {
+  const months = [...new Set(records.map(r => monthKey(r.date)))].sort();
+
+  ['fl-month', 'rpt-month'].forEach(id => {
+    const sel = $(id), cur = sel.value;
+    sel.innerHTML = '<option value="">ทั้งหมด</option>';
+    months.forEach(m => sel.add(new Option(monthLabel(m), m)));
+    if (months.includes(cur)) sel.value = cur;
+  });
+
+  const fp = $('fl-plate'), curP = fp.value;
+  fp.innerHTML = '<option value="">ทั้งหมด</option>';
+  VEHICLES.forEach(v => fp.add(new Option(v.plate, v.plate)));
+  if (curP) fp.value = curP;
+}
+
+// ─── RENDER LIST ───
+function renderList() {
+  const month = val('fl-month'), plate = val('fl-plate');
+  const rows = records
+    .filter(r => (!month || monthKey(r.date) === month) && (!plate || r.plate === plate))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
+
+  $('list-count').textContent = `${rows.length} รายการ`;
+  const tbody = $('list-body');
+
+  if (!rows.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="16">📋 ไม่มีรายการ</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.no}</td>
+      <td>${fmtDate(r.date)}</td>
+      <td>${r.billNo || '-'}</td>
+      <td><strong>${r.plate}</strong></td>
+      <td class="td-l">${r.name}</td>
+      <td>${r.type}</td>
+      <td class="td-r">${ni(r.odomBefore)}</td>
+      <td class="td-r">${ni(r.odomAfter)}</td>
+      <td>${r.fuelType}</td>
+      <td class="td-r">${n(r.pricePerL,3)}</td>
+      <td class="td-r">${n(r.liters,3)}</td>
+      <td class="td-r"><strong>${ni(r.totalPrice)}</strong></td>
+      <td class="td-r">${ni(r.distance)}</td>
+      <td class="td-r">${n(r.kmPerL,3)}</td>
+      <td class="td-r">${n(r.bahtPerKm,3)}</td>
+      <td class="no-print" style="white-space:nowrap">
+        <button class="btn btn-secondary btn-sm" onclick="editRecord(${r.id})">✏️ แก้ไข</button>
+        <button class="btn btn-danger btn-sm"    onclick="deleteRecord(${r.id})">🗑️</button>
+      </td>
+    </tr>`).join('');
+}
+
+// ─── RENDER REPORT ───
+function renderReport() {
+  const month = val('rpt-month');
+  const rows  = records
+    .filter(r => !month || monthKey(r.date) === month)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id);
+
+  const period = month ? monthLabel(month) : 'ทั้งหมด';
+  const printDate = new Date().toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' });
+
+  const tCost  = rows.reduce((s,r) => s + r.totalPrice, 0);
+  const tLit   = rows.reduce((s,r) => s + r.liters,     0);
+  const tDist  = rows.reduce((s,r) => s + r.distance,   0);
+  const avgKmL = tLit  ? tDist / tLit  : 0;
+  const avgBpK = tDist ? tCost / tDist : 0;
+
+  // Group by vehicle
+  const vMap = {};
+  rows.forEach(r => {
+    if (!vMap[r.plate]) vMap[r.plate] = { plate:r.plate, name:r.name, type:r.type, trips:0, liters:0, cost:0, dist:0 };
+    vMap[r.plate].trips++;
+    vMap[r.plate].liters += r.liters;
+    vMap[r.plate].cost   += r.totalPrice;
+    vMap[r.plate].dist   += r.distance;
+  });
+  const vRows = Object.values(vMap).sort((a,b) => a.plate.localeCompare(b.plate));
+
+  $('report-content').innerHTML = `
+  <div class="card">
+    <div class="rpt-title">
+      <h2>รายงานสรุปค่าน้ำมันรถขนส่งสินค้า</h2>
+      <p>ช่วงเวลา : <strong>${period}</strong> &nbsp;|&nbsp; วันที่พิมพ์ : ${printDate}</p>
+    </div>
+    <hr class="rpt-divider">
+    <div class="kpi-grid">
+      <div class="kpi k1"><div class="kpi-val">${ni(rows.length)} ครั้ง</div><div class="kpi-lbl">จำนวนรายการ</div></div>
+      <div class="kpi k2"><div class="kpi-val">${n(tLit,2)} ลิตร</div><div class="kpi-lbl">รวมปริมาณน้ำมัน</div></div>
+      <div class="kpi k3"><div class="kpi-val">${ni(tCost)} บาท</div><div class="kpi-lbl">รวมค่าน้ำมัน</div></div>
+      <div class="kpi k4"><div class="kpi-val">${ni(tDist)} กม.</div><div class="kpi-lbl">รวมระยะทาง</div></div>
+      <div class="kpi k5"><div class="kpi-val">${n(avgKmL,2)} กม./ลิตร</div><div class="kpi-lbl">ประสิทธิภาพเฉลี่ย</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📊 สรุปรายคัน</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ทะเบียน</th><th>ชื่อ-นามสกุล</th><th>ประเภท</th>
+            <th>จำนวนครั้ง</th><th>รวมลิตร</th><th>รวมค่าน้ำมัน (บาท)</th>
+            <th>รวมระยะทาง (กม.)</th><th>เฉลี่ย กม./ลิตร</th><th>เฉลี่ย บาท/กม.</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${vRows.map(v => {
+            const vKmL = v.liters ? v.dist/v.liters : 0;
+            const vBpK = v.dist   ? v.cost/v.dist   : 0;
+            return `<tr>
+              <td><strong>${v.plate}</strong></td>
+              <td class="td-l">${v.name}</td>
+              <td>${v.type}</td>
+              <td>${v.trips}</td>
+              <td class="td-r">${n(v.liters,2)}</td>
+              <td class="td-r"><strong>${ni(v.cost)}</strong></td>
+              <td class="td-r">${ni(v.dist)}</td>
+              <td class="td-r">${n(vKmL,3)}</td>
+              <td class="td-r">${n(vBpK,3)}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="3">รวมทั้งหมด</td>
+            <td>${rows.length}</td>
+            <td class="td-r">${n(tLit,2)}</td>
+            <td class="td-r">${ni(tCost)}</td>
+            <td class="td-r">${ni(tDist)}</td>
+            <td class="td-r">${n(avgKmL,3)}</td>
+            <td class="td-r">${n(avgBpK,3)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📋 รายการละเอียด</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>No.</th><th>วันที่</th><th>เลขที่บิล</th>
+            <th>ทะเบียน</th><th>ชื่อ-นามสกุล</th><th>ประเภท</th>
+            <th>ไมล์ก่อน</th><th>ไมล์ที่เติม</th><th>ชนิดน้ำมัน</th>
+            <th>ราคา/ลิตร</th><th>ลิตร</th><th>ราคา (บาท)</th>
+            <th>ระยะทาง</th><th>กม./ลิตร</th><th>บาท/กม.</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(r => `
+          <tr>
+            <td>${r.no}</td>
+            <td>${fmtDate(r.date)}</td>
+            <td>${r.billNo||'-'}</td>
+            <td><strong>${r.plate}</strong></td>
+            <td class="td-l">${r.name}</td>
+            <td>${r.type}</td>
+            <td class="td-r">${ni(r.odomBefore)}</td>
+            <td class="td-r">${ni(r.odomAfter)}</td>
+            <td>${r.fuelType}</td>
+            <td class="td-r">${n(r.pricePerL,3)}</td>
+            <td class="td-r">${n(r.liters,3)}</td>
+            <td class="td-r"><strong>${ni(r.totalPrice)}</strong></td>
+            <td class="td-r">${ni(r.distance)}</td>
+            <td class="td-r">${n(r.kmPerL,3)}</td>
+            <td class="td-r">${n(r.bahtPerKm,3)}</td>
+          </tr>`).join('')}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="10">รวม</td>
+            <td class="td-r">${n(tLit,2)}</td>
+            <td class="td-r">${ni(tCost)}</td>
+            <td class="td-r">${ni(tDist)}</td>
+            <td class="td-r">${n(avgKmL,3)}</td>
+            <td class="td-r">${n(avgBpK,3)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>`;
+}
+
+// ─── UI ───
+function showPane(name) {
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  $(`pane-${name}`).classList.add('active');
+  const idx = ['entry','list','report'].indexOf(name);
+  document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+  if (name === 'list')   renderList();
+  if (name === 'report') renderReport();
+}
+
+let _toastTimer;
+function toast(msg, type = 'success') {
+  const el = $('toast');
+  el.textContent = msg;
+  el.className = `toast ${type} show`;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.className = 'toast'; }, 2800);
+}
+
+// ─── START ───
+init();
+</script>
+</body>
+</html>
