@@ -193,6 +193,31 @@
     .c-warn { color: #e65100 !important; font-weight: 700 !important; }
     .c-over { color: #c62828 !important; font-weight: 800 !important; }
 
+    /* ── BUDGET OVERVIEW CARD ── */
+    .bov-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 12px; }
+    .bov-item {
+      border: 1.5px solid #e0e6f0; border-radius: 9px;
+      padding: 14px 16px; background: #fafbff;
+      transition: box-shadow .2s;
+    }
+    .bov-item:hover { box-shadow: 0 3px 10px rgba(0,0,0,.1); }
+    .bov-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
+    .bov-plate { font-size: 17px; font-weight: 800; color: #0d47a1; }
+    .bov-type  { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 12px; background: #e8eaf6; color: #3949ab; }
+    .bov-name  { font-size: 13px; color: #555; margin-bottom: 10px; }
+    .bov-remain      { font-size: 26px; font-weight: 800; line-height: 1; margin-bottom: 4px; }
+    .bov-remain.ok   { color: #2e7d32; }
+    .bov-remain.warn { color: #e65100; }
+    .bov-remain.over { color: #c62828; }
+    .bov-remain-lbl  { font-size: 11px; color: #999; margin-bottom: 8px; }
+    .bov-meta  { display: flex; justify-content: space-between; font-size: 12px; color: #888; margin-bottom: 5px; }
+    .bov-track { height: 9px; background: #e0e6f0; border-radius: 5px; overflow: hidden; }
+    .bov-fill  { height: 100%; border-radius: 5px; transition: width .4s; }
+    .bov-fill.ok   { background: #43a047; }
+    .bov-fill.warn { background: #fb8c00; }
+    .bov-fill.over { background: #e53935; }
+    .bov-no-budget { display: flex; align-items: center; justify-content: center; height: 60px; color: #ccc; font-size: 13px; }
+
     /* ── PRINT ── */
     @media print {
       .app-header, .tabs, .no-print { display: none !important; }
@@ -793,6 +818,36 @@ function renderReport() {
       <div class="kpi k3"><div class="kpi-val">${ni(tCost)} บาท</div><div class="kpi-lbl">รวมค่าน้ำมัน</div></div>
       <div class="kpi k4"><div class="kpi-val">${ni(tDist)} กม.</div><div class="kpi-lbl">รวมระยะทาง</div></div>
       <div class="kpi k5"><div class="kpi-val">${n(avgKmL,2)} กม./ลิตร</div><div class="kpi-lbl">ประสิทธิภาพเฉลี่ย</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">💳 สถานะวงเงิน — ${period}</div>
+    <div class="bov-grid">
+      ${VEHICLES.map(v => {
+        const limit = BUDGET[v.type] || 0;
+        if (!limit) return `<div class="bov-item"><div class="bov-top"><span class="bov-plate">${v.plate}</span><span class="bov-type">${v.type}</span></div><div class="bov-name">${v.name}</div><div class="bov-no-budget">ไม่มีวงเงิน</div></div>`;
+        const used   = vMap[v.plate] ? vMap[v.plate].cost : 0;
+        const remain = limit - used;
+        const pct    = Math.min(100, (used / limit) * 100);
+        const cls    = pct >= 100 ? 'over' : pct >= 80 ? 'warn' : 'ok';
+        const remainTxt = remain >= 0 ? ni(remain) + ' บาท' : 'เกิน ' + ni(-remain) + ' บาท';
+        return `
+        <div class="bov-item">
+          <div class="bov-top">
+            <span class="bov-plate">${v.plate}</span>
+            <span class="bov-type">${v.type}</span>
+          </div>
+          <div class="bov-name">${v.name}</div>
+          <div class="bov-remain ${cls}">${remainTxt}</div>
+          <div class="bov-remain-lbl">วงเงินคงเหลือ</div>
+          <div class="bov-meta">
+            <span>ใช้แล้ว ${ni(used)} บาท</span>
+            <span>วงเงิน ${ni(limit)} บาท</span>
+          </div>
+          <div class="bov-track"><div class="bov-fill ${cls}" style="width:${pct}%"></div></div>
+        </div>`;
+      }).join('')}
     </div>
   </div>
 
