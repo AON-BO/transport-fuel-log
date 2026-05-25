@@ -1003,6 +1003,25 @@ function parseCSVLine(line) {
   res.push(cell); return res;
 }
 
+// แมปชื่อหัวคอลัมน์ (รองรับหลายรูปแบบ)
+const COL_MAP = {
+  'no':true,'no.':true,
+  'วันที่':'date',
+  'เลขที่บิล':'billNo','เลขบิล':'billNo','bill no':'billNo','billno':'billNo',
+  'ทะเบียน':'plate','ทะเบียนรถ':'plate',
+  'ชื่อ-นามสกุล':'name','ชื่อ นามสกุล':'name','ชื่อนามสกุล':'name','ชื่อ':'name',
+  'ประเภท':'type','ประเภทรถ':'type',
+  'ไมล์ก่อน':'odomBefore','ไมล์รอบก่อน':'odomBefore','ไมล์ รอบก่อน':'odomBefore',
+  'ไมล์ที่เติม':'odomAfter','ไมล์รอบที่เติม':'odomAfter','ไมล์ รอบที่เติม':'odomAfter','ไมล์ รอบที่เดิ':'odomAfter',
+  'ชนิดน้ำมัน':'fuelType','ชนิด':'fuelType','ประเภทน้ำมัน':'fuelType',
+  'ราคา/ลิตร':'pricePerL','ราคาต่อลิตร':'pricePerL',
+  'ลิตร':'liters','จำนวนลิตร':'liters','จำนวน ลิตร':'liters',
+  'ราคา(บาท)':'totalPrice','ราคา':'totalPrice','ราคารวม':'totalPrice',
+  'ระยะทาง':'distance',
+  'กม./ลิตร':'kmPerL','กม/ลิตร':'kmPerL',
+  'บาท/กม.':'bahtPerKm','บาท/กม':'bahtPerKm',
+};
+
 function importCSV(input) {
   const file = input.files[0];
   if (!file) return;
@@ -1016,18 +1035,50 @@ function importCSV(input) {
     const lines = text.split(/\r?\n/).filter(l => l.trim());
     if (lines.length < 2) { toast('ไฟล์ว่างเปล่า', 'error'); return; }
 
+    // อ่านหัวคอลัมน์ → สร้าง index map
+    const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase().replace(/"/g,''));
+    const idx = {}; // field → column index
+    headers.forEach((h, i) => {
+      const field = COL_MAP[h];
+      if (field && field !== true) idx[field] = i;
+      if (h === 'no' || h === 'no.') idx['no'] = i;
+    });
+
+    const g = (cols, field) => { const i = idx[field]; return i !== undefined ? cols[i] : ''; };
+
     const imported = lines.slice(1).map((line, i) => {
       const c = parseCSVLine(line);
-      if (c.length < 13) return null;
+      if (c.every(x => !x.trim())) return null; // ข้ามบรรทัดว่าง
+
+      const plate = g(c,'plate').trim();
+      if (!plate) return null;
+
+      // auto-fill ชื่อ/ประเภท จากทะเบียน ถ้าไม่มีในไฟล์
+      const vInfo = VEHICLES.find(v => v.plate === plate);
+      const name  = g(c,'name').trim()  || vInfo?.name || '';
+      const type  = g(c,'type').trim()  || vInfo?.type || '';
+
+      const ob    = parseFloat(g(c,'odomBefore')) || 0;
+      const oa    = parseFloat(g(c,'odomAfter'))  || 0;
+      const ppl   = parseFloat(g(c,'pricePerL'))  || 0;
+      const lit   = parseFloat(g(c,'liters'))     || 0;
+
+      // คำนวณช่องที่ขาด
+      const price = parseFloat(g(c,'totalPrice')) || (ppl * lit) || 0;
+      const dist  = parseFloat(g(c,'distance'))   || (oa > ob ? oa - ob : 0);
+      const kml   = parseFloat(g(c,'kmPerL'))     || (dist && lit ? dist/lit : 0);
+      const bpk   = parseFloat(g(c,'bahtPerKm'))  || (dist && price ? price/dist : 0);
+
       return {
         id: Date.now() + i,
-        no: parseInt(c[0]) || (nextNo() + i),
-        date: c[1], billNo: c[2], plate: c[3], name: c[4], type: c[5],
-        odomBefore: parseFloat(c[6]) || 0, odomAfter: parseFloat(c[7]) || 0,
-        fuelType: c[8],
-        pricePerL: parseFloat(c[9]) || 0, liters: parseFloat(c[10]) || 0,
-        totalPrice: parseFloat(c[11]) || 0, distance: parseFloat(c[12]) || 0,
-        kmPerL: parseFloat(c[13]) || 0, bahtPerKm: parseFloat(c[14]) || 0,
+        no: parseInt(g(c,'no')) || (nextNo() + i),
+        date: g(c,'date').trim() || today(),
+        billNo: g(c,'billNo').trim(),
+        plate, name, type,
+        fuelType: g(c,'fuelType').trim() || 'HI DIESEL S (B7)',
+        odomBefore: ob, odomAfter: oa,
+        pricePerL: ppl, liters: lit,
+        totalPrice: price, distance: dist, kmPerL: kml, bahtPerKm: bpk,
       };
     }).filter(Boolean);
 
