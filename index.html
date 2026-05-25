@@ -503,10 +503,21 @@ function save() { localStorage.setItem('fuelRecords_v1', JSON.stringify(records)
 
 function today() { return new Date().toISOString().slice(0, 10); }
 
+function normalizeDate(d) {
+  if (!d) return '';
+  d = String(d).trim();
+  if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(d)) return d; // YYYY-MM-DD ✓
+  const slash = d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); // D/M/YYYY
+  if (slash) return `${slash[3]}-${slash[2].padStart(2,'0')}-${slash[1].padStart(2,'0')}`;
+  return d;
+}
+
 function fmtDate(d) {
   if (!d) return '';
-  const [y, m, day] = d.split('-');
-  return `${+day}/${+m}/${y}`;
+  const norm = normalizeDate(d);
+  const m = norm.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return `${+m[3]}/${+m[2]}/${m[1]}`;
+  return d;
 }
 
 function n(v, d = 3) {
@@ -1072,7 +1083,7 @@ function importCSV(input) {
       return {
         id: Date.now() + i,
         no: parseInt(g(c,'no')) || (nextNo() + i),
-        date: g(c,'date').trim() || today(),
+        date: normalizeDate(g(c,'date')) || today(),
         billNo: g(c,'billNo').trim(),
         plate, name, type,
         fuelType: g(c,'fuelType').trim() || 'HI DIESEL S (B7)',
