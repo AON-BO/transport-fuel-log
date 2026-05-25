@@ -363,6 +363,11 @@
           <option value="">ทั้งหมด</option>
         </select>
         <span class="rec-count" id="list-count"></span>
+        <button class="btn btn-success btn-sm" onclick="exportCSV()">📤 ส่งออก CSV</button>
+        <label class="btn btn-secondary btn-sm" style="cursor:pointer">
+          📥 นำเข้า CSV
+          <input type="file" id="csv-input" accept=".csv" style="display:none" onchange="importCSV(this)">
+        </label>
       </div>
       <div class="table-wrap">
         <table>
@@ -959,6 +964,83 @@ function renderReport() {
       </table>
     </div>
   </div>`;
+}
+
+// ─── CSV EXPORT ───
+function exportCSV() {
+  const month = val('fl-month'), plate = val('fl-plate');
+  const rows = records
+    .filter(r => (!month || monthKey(r.date) === month) && (!plate || r.plate === plate))
+    .sort((a,b) => a.date.localeCompare(b.date) || a.id - b.id);
+
+  if (!rows.length) { toast('ไม่มีข้อมูลที่จะส่งออก', 'error'); return; }
+
+  const headers = ['No.','วันที่','เลขที่บิล','ทะเบียน','ชื่อ-นามสกุล','ประเภท',
+    'ไมล์ก่อน','ไมล์ที่เติม','ชนิดน้ำมัน','ราคา/ลิตร','ลิตร',
+    'ราคา(บาท)','ระยะทาง','กม./ลิตร','บาท/กม.'];
+
+  const csv = [headers, ...rows.map(r => [
+    r.no, r.date, r.billNo, r.plate, r.name, r.type,
+    r.odomBefore, r.odomAfter, r.fuelType,
+    r.pricePerL, r.liters, r.totalPrice, r.distance, r.kmPerL, r.bahtPerKm
+  ])].map(row => row.map(c => `"${String(c ?? '').replace(/"/g,'""')}"`).join(',')).join('\r\n');
+
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: `fuel-log-${today()}.csv` });
+  a.click(); URL.revokeObjectURL(a.href);
+  toast(`ส่งออก ${rows.length} รายการ`, 'success');
+}
+
+// ─── CSV IMPORT ───
+function parseCSVLine(line) {
+  const res = []; let cell = '', q = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { if (q && line[i+1] === '"') { cell += '"'; i++; } else q = !q; }
+    else if (c === ',' && !q) { res.push(cell); cell = ''; }
+    else cell += c;
+  }
+  res.push(cell); return res;
+}
+
+function importCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    let text = e.target.result;
+    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) { toast('ไฟล์ว่างเปล่า', 'error'); return; }
+
+    const imported = lines.slice(1).map((line, i) => {
+      const c = parseCSVLine(line);
+      if (c.length < 13) return null;
+      return {
+        id: Date.now() + i,
+        no: parseInt(c[0]) || (nextNo() + i),
+        date: c[1], billNo: c[2], plate: c[3], name: c[4], type: c[5],
+        odomBefore: parseFloat(c[6]) || 0, odomAfter: parseFloat(c[7]) || 0,
+        fuelType: c[8],
+        pricePerL: parseFloat(c[9]) || 0, liters: parseFloat(c[10]) || 0,
+        totalPrice: parseFloat(c[11]) || 0, distance: parseFloat(c[12]) || 0,
+        kmPerL: parseFloat(c[13]) || 0, bahtPerKm: parseFloat(c[14]) || 0,
+      };
+    }).filter(Boolean);
+
+    if (!imported.length) { toast('ไม่พบข้อมูลในไฟล์', 'error'); return; }
+
+    const mode = confirm(
+      `พบ ${imported.length} รายการ\n\nกด OK = แทนที่ข้อมูลทั้งหมด\nกด Cancel = เพิ่มต่อจากของเดิม`
+    );
+    records = mode ? imported : [...records, ...imported];
+    save(); populateFilters(); renderList(); renderReport();
+    toast(`นำเข้าสำเร็จ ${imported.length} รายการ`, 'success');
+  };
+  reader.readAsText(file, 'UTF-8');
 }
 
 // ─── UI ───
