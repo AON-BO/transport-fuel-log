@@ -406,6 +406,14 @@
         <select id="rpt-month" onchange="renderReport()">
           <option value="">ทั้งหมด</option>
         </select>
+        <label>ประเภทรถ:</label>
+        <select id="rpt-type" onchange="$('rpt-plate').value=''; populateFilters(); renderReport()">
+          <option value="">ทั้งหมด</option>
+          <option>6 ล้อ</option>
+          <option>6 ล้อ HIAB</option>
+          <option>10 ล้อ</option>
+          <option>12 ล้อ</option>
+        </select>
         <label>ทะเบียน:</label>
         <select id="rpt-plate" onchange="renderReport()">
           <option value="">ทั้งหมด</option>
@@ -767,7 +775,10 @@ function populateFilters() {
   ['fl-plate', 'rpt-plate'].forEach(id => {
     const fp = $(id), curP = fp.value;
     fp.innerHTML = '<option value="">ทั้งหมด</option>';
-    VEHICLES.forEach(v => fp.add(new Option(`${v.plate} — ${v.name}`, v.plate)));
+    const typeFilter = id === 'rpt-plate' ? val('rpt-type') : '';
+    VEHICLES
+      .filter(v => !typeFilter || v.type === typeFilter)
+      .forEach(v => fp.add(new Option(`${v.plate} — ${v.name}`, v.plate)));
     if (curP) fp.value = curP;
   });
 }
@@ -815,11 +826,12 @@ function renderList() {
 function renderReport() {
   const month = val('rpt-month');
   const plate = val('rpt-plate');
+  const type  = val('rpt-type');
   const rows  = records
-    .filter(r => (!month || monthKey(r.date) === month) && (!plate || r.plate === plate))
+    .filter(r => (!month || monthKey(r.date) === month) && (!plate || r.plate === plate) && (!type || r.type === type))
     .sort(cmpDate);
 
-  const period = [month ? monthLabel(month) : 'ทั้งหมด', plate ? plate : ''].filter(Boolean).join(' · ');
+  const period = [month ? monthLabel(month) : 'ทั้งหมด', type || '', plate || ''].filter(Boolean).join(' · ');
   const printDate = new Date().toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' });
 
   const tCost  = rows.reduce((s,r) => s + r.totalPrice, 0);
