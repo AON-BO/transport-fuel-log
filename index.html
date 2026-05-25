@@ -368,6 +368,7 @@
           📥 นำเข้า CSV
           <input type="file" id="csv-input" accept=".csv" style="display:none" onchange="importCSV(this)">
         </label>
+        <button class="btn btn-secondary btn-sm" onclick="downloadTemplate()">📋 ดาวน์โหลด Template</button>
       </div>
       <div class="table-wrap">
         <table>
@@ -995,6 +996,18 @@ function renderReport() {
 }
 
 // ─── CSV EXPORT ───
+function downloadTemplate() {
+  const headers = ['No.','วันที่','เลขที่บิล','ทะเบียน','ชื่อ-นามสกุล','ประเภท',
+    'ไมล์ก่อน','ไมล์ที่เติม','ชนิดน้ำมัน','ราคา/ลิตร','ลิตร','ราคา(บาท)','ระยะทาง','กม./ลิตร','บาท/กม.'];
+  const example = ['1','1/5/2026','B001','70-9999','สมชาย','6 ล้อ','100000','100200','B7','31.00','50','1550','200','4.00','7.75'];
+  const csv = '\uFEFF' + headers.join(',') + '\n' + example.join(',') + '\n';
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'fuel_template.csv';
+  a.click();
+}
+
 function exportCSV() {
   const month = val('fl-month'), plate = val('fl-plate');
   const rows = records
@@ -1032,23 +1045,32 @@ function parseCSVLine(line) {
 }
 
 // แมปชื่อหัวคอลัมน์ (รองรับหลายรูปแบบ)
-const COL_MAP = {
-  'no':true,'no.':true,
+// normalize header: ตัดช่องว่าง, /, ., -, (, ), ↑ ทุกตัวที่ไม่ใช่ภาษาไทย/ตัวเลข/ละติน
+function normHdr(h) {
+  return String(h).toLowerCase().replace(/[^\u0E00-\u0E7F0-9a-z]/g, '');
+}
+
+// สร้าง COL_MAP จาก raw keys → normalize ทั้งหมด
+const _RAW_MAP = {
+  'no.':true,'no':true,
   'วันที่':'date',
-  'เลขที่บิล':'billNo','เลขบิล':'billNo','bill no':'billNo','billno':'billNo',
+  'เลขที่บิล':'billNo','เลขบิล':'billNo','billno':'billNo',
   'ทะเบียน':'plate','ทะเบียนรถ':'plate',
   'ชื่อ-นามสกุล':'name','ชื่อ นามสกุล':'name','ชื่อนามสกุล':'name','ชื่อ':'name',
   'ประเภท':'type','ประเภทรถ':'type',
   'ไมล์ก่อน':'odomBefore','ไมล์รอบก่อน':'odomBefore','ไมล์ รอบก่อน':'odomBefore',
-  'ไมล์ที่เติม':'odomAfter','ไมล์รอบที่เติม':'odomAfter','ไมล์ รอบที่เติม':'odomAfter','ไมล์ รอบที่เดิ':'odomAfter',
+  'ไมล์ที่เติม':'odomAfter','ไมล์รอบที่เติม':'odomAfter','ไมล์ รอบที่เติม':'odomAfter',
+  'ไมล์ รอบที่เดิ':'odomAfter','ไมล์รอบทีเดิม':'odomAfter',
   'ชนิดน้ำมัน':'fuelType','ชนิด':'fuelType','ประเภทน้ำมัน':'fuelType',
-  'ราคา/ลิตร':'pricePerL','ราคาต่อลิตร':'pricePerL',
+  'ราคา/ลิตร':'pricePerL','ราคาลิตร':'pricePerL','ราคาต่อลิตร':'pricePerL',
   'ลิตร':'liters','จำนวนลิตร':'liters','จำนวน ลิตร':'liters',
   'ราคา(บาท)':'totalPrice','ราคา':'totalPrice','ราคารวม':'totalPrice',
   'ระยะทาง':'distance',
-  'กม./ลิตร':'kmPerL','กม/ลิตร':'kmPerL',
-  'บาท/กม.':'bahtPerKm','บาท/กม':'bahtPerKm',
+  'กม./ลิตร':'kmPerL','กม/ลิตร':'kmPerL','กมลิตร':'kmPerL',
+  'บาท/กม.':'bahtPerKm','บาท/กม':'bahtPerKm','บาทกม':'bahtPerKm',
 };
+const COL_MAP = {};
+Object.entries(_RAW_MAP).forEach(([k,v]) => { COL_MAP[normHdr(k)] = v; });
 
 function importCSV(input) {
   const file = input.files[0];
@@ -1064,12 +1086,12 @@ function importCSV(input) {
     if (lines.length < 2) { toast('ไฟล์ว่างเปล่า', 'error'); return; }
 
     // อ่านหัวคอลัมน์ → สร้าง index map
-    const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase().replace(/"/g,''));
+    const headers = parseCSVLine(lines[0]).map(h => normHdr(h.replace(/"/g,'')));
     const idx = {}; // field → column index
     headers.forEach((h, i) => {
       const field = COL_MAP[h];
       if (field && field !== true) idx[field] = i;
-      if (h === 'no' || h === 'no.') idx['no'] = i;
+      if (h === normHdr('no') || h === normHdr('no.')) idx['no'] = i;
     });
 
     const g   = (cols, field) => { const i = idx[field]; return i !== undefined ? cols[i] : ''; };
