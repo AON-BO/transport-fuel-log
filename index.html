@@ -827,6 +827,13 @@ function renderReport() {
   const avgKmL = tLit  ? tDist / tLit  : 0;
   const avgBpK = tDist ? tCost / tDist : 0;
 
+  // คำนวณวงเงินแยก: ถ้าเลือกเดือน=ใช้เดือนนั้น, ถ้าทั้งหมด=ใช้เดือนปัจจุบัน
+  const budgetMk = month || today().slice(0, 7);
+  const budgetUsed = {};
+  records.filter(r => monthKey(r.date) === budgetMk)
+         .forEach(r => { budgetUsed[r.plate] = (budgetUsed[r.plate] || 0) + r.totalPrice; });
+  const budgetPeriod = monthLabel(budgetMk);
+
   // Group by vehicle
   const vMap = {};
   rows.forEach(r => {
@@ -855,12 +862,12 @@ function renderReport() {
   </div>
 
   <div class="card">
-    <div class="card-title">💳 สถานะวงเงิน — ${period}</div>
+    <div class="card-title">💳 สถานะวงเงิน — ${budgetPeriod}</div>
     <div class="bov-grid">
       ${VEHICLES.filter(v => !plate || v.plate === plate).map(v => {
         const limit = BUDGET[v.type] || 0;
         if (!limit) return `<div class="bov-item"><div class="bov-top"><span class="bov-plate">${v.plate}</span><span class="bov-type">${v.type}</span></div><div class="bov-name">${v.name}</div><div class="bov-no-budget">ไม่มีวงเงิน</div></div>`;
-        const used   = vMap[v.plate] ? vMap[v.plate].cost : 0;
+        const used   = budgetUsed[v.plate] || 0;
         const remain = limit - used;
         const pct    = Math.min(100, (used / limit) * 100);
         const cls    = pct >= 100 ? 'over' : pct >= 80 ? 'warn' : 'ok';
