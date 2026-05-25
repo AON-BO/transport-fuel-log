@@ -1072,30 +1072,31 @@ function importCSV(input) {
       if (h === 'no' || h === 'no.') idx['no'] = i;
     });
 
-    const g = (cols, field) => { const i = idx[field]; return i !== undefined ? cols[i] : ''; };
+    const g   = (cols, field) => { const i = idx[field]; return i !== undefined ? cols[i] : ''; };
+    // parseNum: ตัด comma (thousands separator) และช่องว่างก่อน parse
+    const pn  = s => parseFloat(String(s || '').replace(/,/g, '').trim()) || 0;
 
     const imported = lines.slice(1).map((line, i) => {
       const c = parseCSVLine(line);
-      if (c.every(x => !x.trim())) return null; // ข้ามบรรทัดว่าง
+      if (c.every(x => !x.trim())) return null;
 
-      const plate = g(c,'plate').trim();
-      if (!plate || plate.startsWith('#')) return null; // กรอง #N/A จาก Excel
+      const plate = g(c,'plate').trim().replace(/\s+/g,' ');
+      if (!plate || plate.startsWith('#')) return null;
 
-      // auto-fill ชื่อ/ประเภท จากทะเบียน ถ้าไม่มีในไฟล์
       const vInfo = VEHICLES.find(v => v.plate === plate);
       const name  = g(c,'name').trim()  || vInfo?.name || '';
       const type  = g(c,'type').trim()  || vInfo?.type || '';
 
-      const ob    = parseFloat(g(c,'odomBefore')) || 0;
-      const oa    = parseFloat(g(c,'odomAfter'))  || 0;
-      const ppl   = parseFloat(g(c,'pricePerL'))  || 0;
-      const lit   = parseFloat(g(c,'liters'))     || 0;
+      const ob    = pn(g(c,'odomBefore'));
+      const oa    = pn(g(c,'odomAfter'));
+      const ppl   = pn(g(c,'pricePerL'));
+      const lit   = pn(g(c,'liters'));
 
-      // คำนวณช่องที่ขาด
-      const price = parseFloat(g(c,'totalPrice')) || (ppl * lit) || 0;
-      const dist  = parseFloat(g(c,'distance'))   || (oa > ob ? oa - ob : 0);
-      const kml   = parseFloat(g(c,'kmPerL'))     || (dist && lit ? dist/lit : 0);
-      const bpk   = parseFloat(g(c,'bahtPerKm'))  || (dist && price ? price/dist : 0);
+      // ราคารวม: ใช้จาก CSV ก่อน ถ้าไม่มีคำนวณจาก ppl*lit
+      const price = pn(g(c,'totalPrice')) || (ppl * lit);
+      const dist  = pn(g(c,'distance'))   || (oa > ob ? oa - ob : 0);
+      const kml   = pn(g(c,'kmPerL'))     || (dist && lit   ? dist  / lit   : 0);
+      const bpk   = pn(g(c,'bahtPerKm'))  || (dist && price ? price / dist  : 0);
 
       return {
         id: Date.now() + i,
