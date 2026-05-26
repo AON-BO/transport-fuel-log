@@ -136,6 +136,8 @@
       border: 1px solid #283593;
     }
     .empty-row td { text-align: center !important; padding: 50px; color: #bbb; font-size: 15px; }
+    .type-group-hdr td { background: #e8eaf6 !important; color: #283593; font-weight: 800; font-size: 13px; border-top: 2px solid #9fa8da !important; }
+    .type-subtotal td  { background: #f3f4fb !important; color: #1a237e; font-style: italic; border-bottom: 2px solid #9fa8da !important; }
 
     /* ── KPI CARDS ── */
     .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(160px,1fr)); gap: 14px; margin-bottom: 18px; }
@@ -815,8 +817,14 @@ function renderList() {
 function renderReport() {
   const month = val('rpt-month');
   const plate = val('rpt-plate');
-  // type filter อ่านค่าจาก element ใน report-content (ถ้ายังไม่ render = '')
-  const type  = (document.getElementById('rpt-type') || {}).value || '';
+  // type range filter อ่านค่าจาก element ใน report-content (ถ้ายังไม่ render = '')
+  const TYPE_ORDER = ['6 ล้อ', '6 ล้อ HIAB', '10 ล้อ', '12 ล้อ'];
+  const typeFrom = (document.getElementById('rpt-type-from') || {}).value || '';
+  const typeTo   = (document.getElementById('rpt-type-to')   || {}).value || '';
+  const fromIdx  = typeFrom ? TYPE_ORDER.indexOf(typeFrom) : 0;
+  const toIdx    = typeTo   ? TYPE_ORDER.indexOf(typeTo)   : TYPE_ORDER.length - 1;
+  const lo = Math.min(fromIdx, toIdx), hi = Math.max(fromIdx, toIdx);
+  const activeTypes = TYPE_ORDER.filter((_, i) => i >= lo && i <= hi);
   const rows  = records
     .filter(r => (!month || monthKey(r.date) === month) && (!plate || r.plate === plate))
     .sort(cmpDate);
@@ -837,9 +845,9 @@ function renderReport() {
          .forEach(r => { budgetUsed[r.plate] = (budgetUsed[r.plate] || 0) + r.totalPrice; });
   const budgetPeriod = monthLabel(budgetMk);
 
-  // Group by vehicle (กรองตาม type filter ของตารางสรุปรายคัน)
+  // Group by vehicle (กรองตาม type range filter ของตารางสรุปรายคัน)
   const vMap = {};
-  rows.filter(r => !type || r.type === type).forEach(r => {
+  rows.filter(r => activeTypes.includes(r.type)).forEach(r => {
     if (!vMap[r.plate]) vMap[r.plate] = { plate:r.plate, name:r.name, type:r.type, trips:0, liters:0, cost:0, dist:0 };
     vMap[r.plate].trips++;
     vMap[r.plate].liters += r.liters;
@@ -901,56 +909,81 @@ function renderReport() {
   </div>
 
   <div class="card">
-    <div class="card-title" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <div class="card-title" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <span>📊 สรุปรายคัน</span>
-      <select id="rpt-type" onchange="renderReport()" style="font-size:13px;padding:4px 8px;border-radius:6px;border:1px solid #ddd;background:#f8f9fa">
-        <option value="" ${!type?'selected':''}>ทุกประเภท</option>
-        <option ${type==='6 ล้อ'?'selected':''}>6 ล้อ</option>
-        <option ${type==='6 ล้อ HIAB'?'selected':''}>6 ล้อ HIAB</option>
-        <option ${type==='10 ล้อ'?'selected':''}>10 ล้อ</option>
-        <option ${type==='12 ล้อ'?'selected':''}>12 ล้อ</option>
+      <span style="font-size:13px;font-weight:400;color:#555">จาก</span>
+      <select id="rpt-type-from" onchange="renderReport()" style="font-size:13px;padding:4px 8px;border-radius:6px;border:1px solid #ddd;background:#f8f9fa">
+        ${TYPE_ORDER.map(t => `<option ${typeFrom===t?'selected':''}>${t}</option>`).join('')}
+      </select>
+      <span style="font-size:13px;font-weight:400;color:#555">ถึง</span>
+      <select id="rpt-type-to" onchange="renderReport()" style="font-size:13px;padding:4px 8px;border-radius:6px;border:1px solid #ddd;background:#f8f9fa">
+        ${TYPE_ORDER.map(t => `<option ${(typeTo||TYPE_ORDER[TYPE_ORDER.length-1])===t?'selected':''}>${t}</option>`).join('')}
       </select>
     </div>
     <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>ทะเบียน</th><th>ชื่อ-นามสกุล</th><th>ประเภท</th>
+            <th>ทะเบียน</th><th>ชื่อ-นามสกุล</th>
             <th>จำนวนครั้ง</th><th>รวมลิตร</th><th>รวมค่าน้ำมัน (บาท)</th>
             <th>รวมระยะทาง (กม.)</th><th>เฉลี่ย กม./ลิตร</th><th>เฉลี่ย บาท/กม.</th>
             <th>วงเงิน/เดือน</th><th>คงเหลือ</th><th>% ใช้</th>
           </tr>
         </thead>
         <tbody>
-          ${vRows.map(v => {
-            const vKmL   = v.liters ? v.dist/v.liters : 0;
-            const vBpK   = v.dist   ? v.cost/v.dist   : 0;
-            const limit  = BUDGET[v.type] || 0;
-            const remain = limit - v.cost;
-            const pct    = limit ? Math.min(100, (v.cost/limit)*100) : 0;
-            const cls    = pct >= 100 ? 'c-over' : pct >= 80 ? 'c-warn' : 'c-ok';
-            const budgetCols = limit ? `
-              <td class="td-r">${ni(limit)}</td>
-              <td class="td-r ${cls}">${remain >= 0 ? ni(remain) : '<strong>เกิน '+ni(-remain)+'</strong>'}</td>
-              <td class="td-r ${cls}">${pct.toFixed(1)}%</td>` :
-              `<td colspan="3" style="color:#bbb">-</td>`;
-            return `<tr>
-              <td><strong>${v.plate}</strong></td>
-              <td class="td-l">${v.name}</td>
-              <td>${v.type}</td>
-              <td>${v.trips}</td>
-              <td class="td-r">${n(v.liters,2)}</td>
-              <td class="td-r"><strong>${ni(v.cost)}</strong></td>
-              <td class="td-r">${ni(v.dist)}</td>
-              <td class="td-r">${n(vKmL,3)}</td>
-              <td class="td-r">${n(vBpK,3)}</td>
-              ${budgetCols}
+          ${activeTypes.map(tp => {
+            const grp = vRows.filter(v => v.type === tp);
+            if (!grp.length) return '';
+            const gLit  = grp.reduce((s,v)=>s+v.liters,0);
+            const gCost = grp.reduce((s,v)=>s+v.cost,0);
+            const gDist = grp.reduce((s,v)=>s+v.dist,0);
+            const gTrip = grp.reduce((s,v)=>s+v.trips,0);
+            const gKmL  = gLit  ? gDist/gLit  : 0;
+            const gBpK  = gDist ? gCost/gDist : 0;
+            const vehicleRows = grp.map(v => {
+              const vKmL  = v.liters ? v.dist/v.liters : 0;
+              const vBpK  = v.dist   ? v.cost/v.dist   : 0;
+              const limit = BUDGET[v.type] || 0;
+              const remain= limit - v.cost;
+              const pct   = limit ? Math.min(100,(v.cost/limit)*100) : 0;
+              const cls   = pct>=100?'c-over':pct>=80?'c-warn':'c-ok';
+              const budgetCols = limit
+                ? `<td class="td-r">${ni(limit)}</td>
+                   <td class="td-r ${cls}">${remain>=0?ni(remain):'<strong>เกิน '+ni(-remain)+'</strong>'}</td>
+                   <td class="td-r ${cls}">${pct.toFixed(1)}%</td>`
+                : `<td colspan="3" style="color:#bbb">-</td>`;
+              return `<tr>
+                <td><strong>${v.plate}</strong></td>
+                <td class="td-l">${v.name}</td>
+                <td>${v.trips}</td>
+                <td class="td-r">${n(v.liters,2)}</td>
+                <td class="td-r"><strong>${ni(v.cost)}</strong></td>
+                <td class="td-r">${ni(v.dist)}</td>
+                <td class="td-r">${n(vKmL,3)}</td>
+                <td class="td-r">${n(vBpK,3)}</td>
+                ${budgetCols}
+              </tr>`;
+            }).join('');
+            return `
+            <tr class="type-group-hdr">
+              <td colspan="11">▶ ${tp}</td>
+            </tr>
+            ${vehicleRows}
+            <tr class="type-subtotal">
+              <td colspan="2" class="td-r" style="font-style:italic;color:#555">รวม ${tp}</td>
+              <td>${gTrip}</td>
+              <td class="td-r">${n(gLit,2)}</td>
+              <td class="td-r">${ni(gCost)}</td>
+              <td class="td-r">${ni(gDist)}</td>
+              <td class="td-r">${n(gKmL,3)}</td>
+              <td class="td-r">${n(gBpK,3)}</td>
+              <td colspan="3"></td>
             </tr>`;
           }).join('')}
         </tbody>
         <tfoot>
           <tr>
-            <td colspan="3">รวมทั้งหมด</td>
+            <td colspan="2">รวมทั้งหมด</td>
             <td>${vTotTrips}</td>
             <td class="td-r">${n(vTotLit,2)}</td>
             <td class="td-r">${ni(vTotCost)}</td>
