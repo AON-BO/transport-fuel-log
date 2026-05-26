@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:github.com)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\chali\\OneDrive\\เอกสาร\\Projects\\transport-fuel-log\\.claude\\skills"
+    ]
+  }
+}
