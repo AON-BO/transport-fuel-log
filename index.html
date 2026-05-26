@@ -415,6 +415,37 @@
         <button class="btn btn-print" onclick="window.print()">🖨️ พิมพ์รายงาน</button>
       </div>
     </div>
+    <div class="card no-print" id="budget-settings-card" style="margin-top:12px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer" onclick="toggleBudgetSettings()">
+        <span class="card-title" style="margin:0">⚙️ ตั้งค่าวงเงิน/เดือน</span>
+        <span id="bdg-toggle-icon" style="font-size:12px;color:#888">▼ คลิกเพื่อแก้ไข</span>
+      </div>
+      <div id="budget-settings-body" style="display:none;margin-top:14px">
+        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+          <div style="display:flex;flex-direction:column;gap:4px;min-width:140px">
+            <label style="font-size:12px;font-weight:700;color:#555">6 ล้อ</label>
+            <input id="bdg-6_ล้อ" type="number" min="0" step="1000" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;width:130px">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;min-width:140px">
+            <label style="font-size:12px;font-weight:700;color:#555">6 ล้อ HIAB</label>
+            <input id="bdg-6_ล้อ_HIAB" type="number" min="0" step="1000" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;width:130px">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;min-width:140px">
+            <label style="font-size:12px;font-weight:700;color:#555">10 ล้อ</label>
+            <input id="bdg-10_ล้อ" type="number" min="0" step="1000" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;width:130px">
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;min-width:140px">
+            <label style="font-size:12px;font-weight:700;color:#555">12 ล้อ</label>
+            <input id="bdg-12_ล้อ" type="number" min="0" step="1000" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;width:130px">
+          </div>
+          <div style="display:flex;gap:8px;padding-bottom:1px">
+            <button class="btn btn-primary btn-sm" onclick="saveBudget()">💾 บันทึก</button>
+            <button class="btn btn-secondary btn-sm" onclick="resetBudget()">↩ ค่าเริ่มต้น</button>
+          </div>
+        </div>
+        <p style="margin:10px 0 0;font-size:12px;color:#999">วงเงินนี้ใช้กับทุกเดือน บันทึกไว้ในเครื่องนี้</p>
+      </div>
+    </div>
     <div id="report-content"></div>
   </div>
 
@@ -437,12 +468,49 @@ const VEHICLES = [
   { plate: '99-3000', name: 'พิเชษฐ ชัยฤทธิ์',    type: '6 ล้อ'      },
 ];
 
-const BUDGET = {
+const BUDGET_DEFAULT = {
   '6 ล้อ':      30000,
   '6 ล้อ HIAB': 30000,
   '10 ล้อ':     40000,
   '12 ล้อ':     40000,
 };
+let BUDGET = Object.assign({}, BUDGET_DEFAULT,
+  JSON.parse(localStorage.getItem('budgetSettings') || '{}'));
+
+const BUDGET_IDS = {'6 ล้อ':'bdg-6_ล้อ','6 ล้อ HIAB':'bdg-6_ล้อ_HIAB','10 ล้อ':'bdg-10_ล้อ','12 ล้อ':'bdg-12_ล้อ'};
+
+function initBudgetInputs() {
+  Object.entries(BUDGET_IDS).forEach(([t, id]) => {
+    const el = document.getElementById(id);
+    if (el) el.value = BUDGET[t] || BUDGET_DEFAULT[t];
+  });
+}
+
+function saveBudget() {
+  Object.entries(BUDGET_IDS).forEach(([t, id]) => {
+    const el = document.getElementById(id);
+    if (el) BUDGET[t] = parseInt(el.value) || BUDGET_DEFAULT[t];
+  });
+  localStorage.setItem('budgetSettings', JSON.stringify(BUDGET));
+  renderReport();
+  toast('บันทึกวงเงินแล้ว', 'success');
+}
+
+function resetBudget() {
+  Object.assign(BUDGET, BUDGET_DEFAULT);
+  localStorage.removeItem('budgetSettings');
+  initBudgetInputs();
+  renderReport();
+  toast('รีเซ็ตวงเงินเป็นค่าเริ่มต้นแล้ว', 'success');
+}
+
+function toggleBudgetSettings() {
+  const body = document.getElementById('budget-settings-body');
+  const icon = document.getElementById('bdg-toggle-icon');
+  const open = body.style.display === 'none';
+  body.style.display = open ? 'block' : 'none';
+  icon.textContent = open ? '▲ ซ่อน' : '▼ คลิกเพื่อแก้ไข';
+}
 
 const FUEL_TYPES = [
   'HI DIESEL S (B7)', 'DIESEL B7', 'DIESEL B20',
@@ -498,6 +566,7 @@ function init() {
   fs.value = 'HI DIESEL S (B7)';
 
   document.getElementById('f-date').value = today();
+  initBudgetInputs();
   populateFilters();
   renderList();
   renderReport();
