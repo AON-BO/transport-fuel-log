@@ -406,14 +406,6 @@
         <select id="rpt-month" onchange="renderReport()">
           <option value="">ทั้งหมด</option>
         </select>
-        <label>ประเภทรถ:</label>
-        <select id="rpt-type" onchange="$('rpt-plate').value=''; populateFilters(); renderReport()">
-          <option value="">ทั้งหมด</option>
-          <option>6 ล้อ</option>
-          <option>6 ล้อ HIAB</option>
-          <option>10 ล้อ</option>
-          <option>12 ล้อ</option>
-        </select>
         <label>ทะเบียน:</label>
         <select id="rpt-plate" onchange="renderReport()">
           <option value="">ทั้งหมด</option>
@@ -775,10 +767,7 @@ function populateFilters() {
   ['fl-plate', 'rpt-plate'].forEach(id => {
     const fp = $(id), curP = fp.value;
     fp.innerHTML = '<option value="">ทั้งหมด</option>';
-    const typeFilter = id === 'rpt-plate' ? val('rpt-type') : '';
-    VEHICLES
-      .filter(v => !typeFilter || v.type === typeFilter)
-      .forEach(v => fp.add(new Option(`${v.plate} — ${v.name}`, v.plate)));
+    VEHICLES.forEach(v => fp.add(new Option(`${v.plate} — ${v.name}`, v.plate)));
     if (curP) fp.value = curP;
   });
 }
@@ -826,12 +815,13 @@ function renderList() {
 function renderReport() {
   const month = val('rpt-month');
   const plate = val('rpt-plate');
-  const type  = val('rpt-type');
+  // type filter อ่านค่าจาก element ใน report-content (ถ้ายังไม่ render = '')
+  const type  = (document.getElementById('rpt-type') || {}).value || '';
   const rows  = records
-    .filter(r => (!month || monthKey(r.date) === month) && (!plate || r.plate === plate) && (!type || r.type === type))
+    .filter(r => (!month || monthKey(r.date) === month) && (!plate || r.plate === plate))
     .sort(cmpDate);
 
-  const period = [month ? monthLabel(month) : 'ทั้งหมด', type || '', plate || ''].filter(Boolean).join(' · ');
+  const period = [month ? monthLabel(month) : 'ทั้งหมด', plate || ''].filter(Boolean).join(' · ');
   const printDate = new Date().toLocaleDateString('th-TH', { year:'numeric', month:'long', day:'numeric' });
 
   const tCost  = rows.reduce((s,r) => s + r.totalPrice, 0);
@@ -847,9 +837,9 @@ function renderReport() {
          .forEach(r => { budgetUsed[r.plate] = (budgetUsed[r.plate] || 0) + r.totalPrice; });
   const budgetPeriod = monthLabel(budgetMk);
 
-  // Group by vehicle
+  // Group by vehicle (กรองตาม type filter ของตารางสรุปรายคัน)
   const vMap = {};
-  rows.forEach(r => {
+  rows.filter(r => !type || r.type === type).forEach(r => {
     if (!vMap[r.plate]) vMap[r.plate] = { plate:r.plate, name:r.name, type:r.type, trips:0, liters:0, cost:0, dist:0 };
     vMap[r.plate].trips++;
     vMap[r.plate].liters += r.liters;
@@ -857,6 +847,12 @@ function renderReport() {
     vMap[r.plate].dist   += r.distance;
   });
   const vRows = Object.values(vMap).sort((a,b) => a.plate.localeCompare(b.plate));
+  const vTotLit  = vRows.reduce((s,v) => s + v.liters, 0);
+  const vTotCost = vRows.reduce((s,v) => s + v.cost, 0);
+  const vTotDist = vRows.reduce((s,v) => s + v.dist, 0);
+  const vAvgKmL  = vTotLit  ? vTotDist / vTotLit  : 0;
+  const vAvgBpK  = vTotDist ? vTotCost / vTotDist : 0;
+  const vTotTrips = vRows.reduce((s,v) => s + v.trips, 0);
 
   $('report-content').innerHTML = `
   <div class="card">
@@ -905,7 +901,16 @@ function renderReport() {
   </div>
 
   <div class="card">
-    <div class="card-title">📊 สรุปรายคัน</div>
+    <div class="card-title" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span>📊 สรุปรายคัน</span>
+      <select id="rpt-type" onchange="renderReport()" style="font-size:13px;padding:4px 8px;border-radius:6px;border:1px solid #ddd;background:#f8f9fa">
+        <option value="" ${!type?'selected':''}>ทุกประเภท</option>
+        <option ${type==='6 ล้อ'?'selected':''}>6 ล้อ</option>
+        <option ${type==='6 ล้อ HIAB'?'selected':''}>6 ล้อ HIAB</option>
+        <option ${type==='10 ล้อ'?'selected':''}>10 ล้อ</option>
+        <option ${type==='12 ล้อ'?'selected':''}>12 ล้อ</option>
+      </select>
+    </div>
     <div class="table-wrap">
       <table>
         <thead>
@@ -946,12 +951,12 @@ function renderReport() {
         <tfoot>
           <tr>
             <td colspan="3">รวมทั้งหมด</td>
-            <td>${rows.length}</td>
-            <td class="td-r">${n(tLit,2)}</td>
-            <td class="td-r">${ni(tCost)}</td>
-            <td class="td-r">${ni(tDist)}</td>
-            <td class="td-r">${n(avgKmL,3)}</td>
-            <td class="td-r">${n(avgBpK,3)}</td>
+            <td>${vTotTrips}</td>
+            <td class="td-r">${n(vTotLit,2)}</td>
+            <td class="td-r">${ni(vTotCost)}</td>
+            <td class="td-r">${ni(vTotDist)}</td>
+            <td class="td-r">${n(vAvgKmL,3)}</td>
+            <td class="td-r">${n(vAvgBpK,3)}</td>
             <td colspan="3"></td>
           </tr>
         </tfoot>
