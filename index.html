@@ -252,6 +252,7 @@
   <button class="tab-btn active" onclick="showPane('entry')">📝 บันทึกข้อมูล</button>
   <button class="tab-btn" onclick="showPane('list')">📋 รายการทั้งหมด</button>
   <button class="tab-btn" onclick="showPane('report')">📊 รายงานสรุป</button>
+  <button class="tab-btn" onclick="showPane('settings')">⚙️ ตั้งค่า</button>
 </div>
 
 <!-- ═══════════════════ CONTENT ═══════════════════ -->
@@ -415,38 +416,89 @@
         <button class="btn btn-print" onclick="window.print()">🖨️ พิมพ์รายงาน</button>
       </div>
     </div>
-    <div class="card no-print" id="budget-settings-card" style="margin-top:12px">
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer" onclick="toggleBudgetSettings()">
-        <span class="card-title" style="margin:0">⚙️ ตั้งค่าวงเงิน/เดือน</span>
-        <span id="bdg-toggle-icon" style="font-size:12px;color:#888">▼ คลิกเพื่อแก้ไข</span>
+    <div id="report-content"></div>
+  </div>
+
+  <!-- ─── PANE: SETTINGS ─── -->
+  <div id="pane-settings" class="pane">
+
+    <!-- Budget settings -->
+    <div class="card">
+      <div class="card-title">💰 ตั้งค่าวงเงิน/เดือน</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
+        <div style="display:flex;flex-direction:column;gap:4px;min-width:140px">
+          <label style="font-size:12px;font-weight:700;color:#555">6 ล้อ</label>
+          <input id="bdg-6_ล้อ" type="number" min="0" step="1000" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;width:130px">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;min-width:140px">
+          <label style="font-size:12px;font-weight:700;color:#555">6 ล้อ HIAB</label>
+          <input id="bdg-6_ล้อ_HIAB" type="number" min="0" step="1000" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;width:130px">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;min-width:140px">
+          <label style="font-size:12px;font-weight:700;color:#555">10 ล้อ</label>
+          <input id="bdg-10_ล้อ" type="number" min="0" step="1000" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;width:130px">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;min-width:140px">
+          <label style="font-size:12px;font-weight:700;color:#555">12 ล้อ</label>
+          <input id="bdg-12_ล้อ" type="number" min="0" step="1000" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;width:130px">
+        </div>
+        <div style="display:flex;gap:8px;padding-bottom:1px">
+          <button class="btn btn-primary btn-sm" onclick="saveBudget()">💾 บันทึก</button>
+          <button class="btn btn-secondary btn-sm" onclick="resetBudget()">↩ ค่าเริ่มต้น</button>
+        </div>
       </div>
-      <div id="budget-settings-body" style="display:none;margin-top:14px">
-        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-end">
-          <div style="display:flex;flex-direction:column;gap:4px;min-width:140px">
-            <label style="font-size:12px;font-weight:700;color:#555">6 ล้อ</label>
-            <input id="bdg-6_ล้อ" type="number" min="0" step="1000" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;width:130px">
+      <p style="margin:10px 0 0;font-size:12px;color:#999">วงเงินนี้ใช้กับทุกเดือน บันทึกไว้ในเครื่องนี้</p>
+    </div>
+
+    <!-- Vehicle management -->
+    <div class="card">
+      <div class="card-title">🚛 จัดการรถและคนขับ</div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead>
+            <tr style="background:#e3f2fd;color:#0d47a1">
+              <th style="padding:9px 10px;text-align:center;width:40px">#</th>
+              <th style="padding:9px 10px;text-align:left">ทะเบียน</th>
+              <th style="padding:9px 10px;text-align:left">ชื่อคนขับ</th>
+              <th style="padding:9px 10px;text-align:left">ประเภท</th>
+              <th style="padding:9px 10px;text-align:center;width:130px"></th>
+            </tr>
+          </thead>
+          <tbody id="veh-tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- Add/Edit form -->
+      <div style="margin-top:18px;padding-top:16px;border-top:1px solid #e8ecf4">
+        <div id="veh-form-title" style="font-size:13px;font-weight:700;color:#555;margin-bottom:12px">➕ เพิ่มรถใหม่</div>
+        <div class="form-grid" style="max-width:700px">
+          <div class="fg">
+            <label>ทะเบียน</label>
+            <input id="veh-plate" type="text" placeholder="เช่น 50-3113">
           </div>
-          <div style="display:flex;flex-direction:column;gap:4px;min-width:140px">
-            <label style="font-size:12px;font-weight:700;color:#555">6 ล้อ HIAB</label>
-            <input id="bdg-6_ล้อ_HIAB" type="number" min="0" step="1000" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;width:130px">
+          <div class="fg">
+            <label>ชื่อคนขับ</label>
+            <input id="veh-name" type="text" placeholder="ชื่อ-นามสกุล">
           </div>
-          <div style="display:flex;flex-direction:column;gap:4px;min-width:140px">
-            <label style="font-size:12px;font-weight:700;color:#555">10 ล้อ</label>
-            <input id="bdg-10_ล้อ" type="number" min="0" step="1000" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;width:130px">
-          </div>
-          <div style="display:flex;flex-direction:column;gap:4px;min-width:140px">
-            <label style="font-size:12px;font-weight:700;color:#555">12 ล้อ</label>
-            <input id="bdg-12_ล้อ" type="number" min="0" step="1000" style="padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;width:130px">
-          </div>
-          <div style="display:flex;gap:8px;padding-bottom:1px">
-            <button class="btn btn-primary btn-sm" onclick="saveBudget()">💾 บันทึก</button>
-            <button class="btn btn-secondary btn-sm" onclick="resetBudget()">↩ ค่าเริ่มต้น</button>
+          <div class="fg">
+            <label>ประเภท</label>
+            <select id="veh-type">
+              <option>6 ล้อ</option>
+              <option>6 ล้อ HIAB</option>
+              <option>10 ล้อ</option>
+              <option>12 ล้อ</option>
+            </select>
           </div>
         </div>
-        <p style="margin:10px 0 0;font-size:12px;color:#999">วงเงินนี้ใช้กับทุกเดือน บันทึกไว้ในเครื่องนี้</p>
+        <div class="form-actions">
+          <button id="veh-submit-btn" class="btn btn-primary" onclick="submitVehicle()">➕ เพิ่มรถ</button>
+          <button id="veh-cancel-btn" class="btn btn-secondary" style="display:none" onclick="cancelVehicleEdit()">✕ ยกเลิก</button>
+          <button class="btn btn-secondary" onclick="resetVehicles()">↩ รีเซ็ตค่าเริ่มต้น</button>
+        </div>
       </div>
+      <p style="margin:10px 0 0;font-size:12px;color:#999">การเปลี่ยนแปลงมีผลทันที บันทึกไว้ในเครื่องนี้</p>
     </div>
-    <div id="report-content"></div>
+
   </div>
 
 </div><!-- /content -->
@@ -456,7 +508,7 @@
 <!-- ═══════════════════ SCRIPT ═══════════════════ -->
 <script>
 // ─── MASTER DATA ───
-const VEHICLES = [
+const VEHICLES_DEFAULT = [
   { plate: '50-3113', name: 'ประยูร กลางพิลา',    type: '6 ล้อ'      },
   { plate: '50-3223', name: 'สมชาย เพลิดภูเขียว', type: '10 ล้อ'     },
   { plate: '51-9923', name: 'สมเจต ยุทธทองหลาง',  type: '10 ล้อ'     },
@@ -467,6 +519,13 @@ const VEHICLES = [
   { plate: '99-2350', name: 'สมัย สาขา',           type: '10 ล้อ'     },
   { plate: '99-3000', name: 'พิเชษฐ ชัยฤทธิ์',    type: '6 ล้อ'      },
 ];
+let VEHICLES = (() => {
+  const s = localStorage.getItem('vehicleSettings');
+  return s ? JSON.parse(s) : VEHICLES_DEFAULT.map(v => ({...v}));
+})();
+function saveVehicles() {
+  localStorage.setItem('vehicleSettings', JSON.stringify(VEHICLES));
+}
 
 const BUDGET_DEFAULT = {
   '6 ล้อ':      30000,
@@ -504,13 +563,6 @@ function resetBudget() {
   toast('รีเซ็ตวงเงินเป็นค่าเริ่มต้นแล้ว', 'success');
 }
 
-function toggleBudgetSettings() {
-  const body = document.getElementById('budget-settings-body');
-  const icon = document.getElementById('bdg-toggle-icon');
-  const open = body.style.display === 'none';
-  body.style.display = open ? 'block' : 'none';
-  icon.textContent = open ? '▲ ซ่อน' : '▼ คลิกเพื่อแก้ไข';
-}
 
 const FUEL_TYPES = [
   'HI DIESEL S (B7)', 'DIESEL B7', 'DIESEL B20',
@@ -553,12 +605,7 @@ function init() {
   records = records.map(r => ({ ...r, date: normalizeDate(r.date) || r.date }));
   if (!saved) save();
 
-  // Vehicle dropdown
-  const ps = document.getElementById('f-plate');
-  VEHICLES.forEach(v => {
-    const o = new Option(`${v.plate}  —  ${v.name}`, v.plate);
-    ps.add(o);
-  });
+  populatePlateDropdown();
 
   // Fuel type dropdown
   const fs = document.getElementById('f-fuelType');
@@ -1264,15 +1311,108 @@ function importCSV(input) {
   reader.readAsText(file, 'UTF-8');
 }
 
+// ─── PLATE DROPDOWN ───
+function populatePlateDropdown() {
+  const ps = $('f-plate'), cur = ps.value;
+  ps.innerHTML = '<option value="">-- เลือกทะเบียน --</option>';
+  VEHICLES.forEach(v => ps.add(new Option(`${v.plate}  —  ${v.name}`, v.plate)));
+  if (cur) ps.value = cur;
+}
+
+// ─── VEHICLE SETTINGS ───
+let _editingVehIdx = -1;
+
+function renderVehicleSettings() {
+  const tbody = $('veh-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = VEHICLES.map((v, i) => `
+    <tr style="border-bottom:1px solid #f0f2f8">
+      <td style="padding:8px 10px;text-align:center;color:#aaa;font-size:12px">${i + 1}</td>
+      <td style="padding:8px 10px;font-weight:700">${v.plate}</td>
+      <td style="padding:8px 10px">${v.name}</td>
+      <td style="padding:8px 10px">${v.type}</td>
+      <td style="padding:8px 10px;text-align:center;white-space:nowrap">
+        <button class="btn btn-secondary btn-sm" onclick="editVehicle(${i})" style="padding:5px 10px;font-size:12px">✏️ แก้ไข</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteVehicle(${i})" style="padding:5px 10px;font-size:12px;margin-left:4px">🗑️ ลบ</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function editVehicle(i) {
+  _editingVehIdx = i;
+  const v = VEHICLES[i];
+  set('veh-plate', v.plate);
+  set('veh-name', v.name);
+  set('veh-type', v.type);
+  $('veh-submit-btn').textContent = '💾 บันทึกการแก้ไข';
+  $('veh-cancel-btn').style.display = '';
+  $('veh-form-title').textContent = `✏️ แก้ไขรถ: ${v.plate}`;
+}
+
+function cancelVehicleEdit() {
+  _editingVehIdx = -1;
+  set('veh-plate', '');
+  set('veh-name', '');
+  set('veh-type', '6 ล้อ');
+  $('veh-submit-btn').textContent = '➕ เพิ่มรถ';
+  $('veh-cancel-btn').style.display = 'none';
+  $('veh-form-title').textContent = '➕ เพิ่มรถใหม่';
+}
+
+function submitVehicle() {
+  const plate = val('veh-plate').trim();
+  const name  = val('veh-name').trim();
+  const type  = val('veh-type');
+  if (!plate || !name) { toast('กรุณากรอกทะเบียนและชื่อคนขับ', 'error'); return; }
+
+  if (_editingVehIdx >= 0) {
+    VEHICLES[_editingVehIdx] = { plate, name, type };
+    toast('แก้ไขข้อมูลรถแล้ว');
+  } else {
+    if (VEHICLES.some(v => v.plate === plate)) { toast('ทะเบียนนี้มีอยู่แล้ว', 'error'); return; }
+    VEHICLES.push({ plate, name, type });
+    toast('เพิ่มรถใหม่แล้ว');
+  }
+
+  saveVehicles();
+  cancelVehicleEdit();
+  renderVehicleSettings();
+  populatePlateDropdown();
+  populateFilters();
+}
+
+function deleteVehicle(i) {
+  if (!confirm(`ลบรถทะเบียน ${VEHICLES[i].plate} ออก?`)) return;
+  VEHICLES.splice(i, 1);
+  saveVehicles();
+  renderVehicleSettings();
+  populatePlateDropdown();
+  populateFilters();
+  toast('ลบรถออกแล้ว');
+}
+
+function resetVehicles() {
+  if (!confirm('รีเซ็ตกลับเป็นรายการรถค่าเริ่มต้น?')) return;
+  VEHICLES = VEHICLES_DEFAULT.map(v => ({...v}));
+  saveVehicles();
+  renderVehicleSettings();
+  cancelVehicleEdit();
+  populatePlateDropdown();
+  populateFilters();
+  toast('รีเซ็ตรายการรถแล้ว');
+}
+
 // ─── UI ───
 function showPane(name) {
   document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   $(`pane-${name}`).classList.add('active');
-  const idx = ['entry','list','report'].indexOf(name);
+  const idx = ['entry','list','report','settings'].indexOf(name);
   document.querySelectorAll('.tab-btn')[idx].classList.add('active');
-  if (name === 'list')   renderList();
-  if (name === 'report') renderReport();
+  if (name === 'list')     renderList();
+  if (name === 'report')   renderReport();
+  if (name === 'settings') renderVehicleSettings();
 }
 
 let _toastTimer;
